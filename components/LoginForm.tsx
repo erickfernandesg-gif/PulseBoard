@@ -13,7 +13,7 @@ export function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
 
-  const handleSignIn = async (e: React.FormEvent) => {
+ const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -26,7 +26,13 @@ export function LoginForm() {
       if (error) throw error;
 
       toast.success("Successfully signed in");
-      window.location.href = "/";
+      
+      // A mágica acontece aqui: atualiza a sessão do servidor e redireciona
+      router.refresh(); 
+      setTimeout(() => {
+        router.push("/boards"); // ou "/" dependendo de onde fica seu dashboard principal
+      }, 500); // Um pequeno delay garante que o cookie foi lido pelo middleware
+
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
     } finally {
