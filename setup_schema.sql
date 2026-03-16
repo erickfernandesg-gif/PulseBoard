@@ -90,3 +90,65 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
+-- 1. EVOLUÇÃO DA TABELA DE TAREFAS
+-- Adicionando data de início e controle de tempo total gasto
+ALTER TABLE tasks 
+ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS total_minutes_spent INTEGER DEFAULT 0;
+
+-- 2. SUPORTE A MÚLTIPLOS USUÁRIOS (COLABORADORES)
+-- A coluna 'assigned_to' atual continuará sendo o "Responsável Principal"
+-- Esta nova tabela permitirá adicionar outros envolvidos (ex: Desenvolvedor + Testador)
+CREATE TABLE IF NOT EXISTS task_collaborators (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  role TEXT DEFAULT 'collaborator', -- ex: 'tester', 'viewer', 'dev'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(task_id, user_id)
+);
+
+-- 3. SISTEMA DE COMENTÁRIOS E CHAT INTERNO
+-- Aqui é onde as @menções e o histórico de erros da homologação ficarão registrados
+CREATE TABLE IF NOT EXISTS task_comments (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES profiles(id) NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. SEGURANÇA (RLS) PARA AS NOVAS TABELAS
+ALTER TABLE task_collaborators ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_comments ENABLE ROW LEVEL SECURITY;
+
+-- Políticas para Colaboradores
+CREATE POLICY "Collaborators viewable by team" ON task_collaborators 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Users can manage collaborators" ON task_collaborators 
+FOR ALL USING (auth.role() = 'authenticated');
+
+-- Políticas para Comentários
+CREATE POLICY "Comments viewable by team" ON task_comments 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Users can post comments" ON task_comments 
+FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own comments" ON task_comments 
+FOR DELETE USING (auth.uid() = user_id);
+
+-- 5. ÍNDICES DE PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_collaborators_task_id ON task_collaborators(task_id);
+
+-- Adiciona uma coluna para salvar a configuração de colunas do quadro
+ALTER TABLE boards 
+ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '[
+  {"id": "todo", "title": "A Fazer"},
+  {"id": "in-progress", "title": "Em Execução"},
+  {"id": "done", "title": "Concluído"}
+]'::jsonb;

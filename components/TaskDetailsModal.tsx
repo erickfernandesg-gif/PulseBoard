@@ -1,138 +1,345 @@
 "use client";
 
-import { useState } from "react";
-import { X, Paperclip, MessageSquare, Clock, User } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Paperclip, MessageSquare, User, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+
+interface TaskDetailsModalProps {
+  task: any;
+  onClose: () => void;
+  onTaskUpdated?: () => void;
+  onTaskDeleted?: (taskId: string) => void;
+}
 
 export function TaskDetailsModal({
   task,
   onClose,
-}: {
-  task: any;
-  onClose: () => void;
-}) {
+  onTaskUpdated,
+  onTaskDeleted,
+}: TaskDetailsModalProps) {
+  const supabase = createClient();
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
+  const [isSaving, setIsSaving] = useState(false);
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+
+  // Estados dos campos editáveis
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || "");
+  const [startDate, setStartDate] = useState(task.start_date ? task.start_date.split("T")[0] : "");
+  const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split("T")[0] : "");
+  const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
+  const [status, setStatus] = useState(task.status);
+  const [timeSpent, setTimeSpent] = useState(task.total_minutes_spent || 0);
+
+  // Carregar dados iniciais (Perfis, Comentários e Colaboradores)
+  const fetchData = useCallback(async () => {
+    const [profRes, commRes, collRes] = await Promise.all([
+      supabase.from("profiles").select("id, full_name"),
+      supabase.from("task_comments")
+        .select("*, profiles(full_name)")
+        .eq("task_id", task.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("task_collaborators")
+        .select("user_id, profiles(full_name)")
+        .eq("task_id", task.id)
+    ]);
+
+    if (profRes.data) setProfiles(profRes.data);
+    if (commRes.data) setComments(commRes.data);
+    if (collRes.data) setCollaborators(collRes.data.map(c => c.user_id));
+  }, [supabase, task.id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Tem certeza que deseja excluir esta tarefa?")) return;
+
+    try {
+      const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+      if (error) throw error;
+
+      toast.success("Tarefa excluída com sucesso");
+      
+      // Chama a função passando o ID para o Kanban remover o card certo
+      if (onTaskDeleted) onTaskDeleted(task.id);
+      
+      onClose();
+    } catch (error: any) {
+      toast.error("Erro ao excluir a tarefa");
+      console.error(error);
+    }
+  };
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // 1. Atualizar Tarefa Principal
+      const { error: taskError } = await supabase
+        .from("tasks")
+        .update({
+          title,
+          description,
+          start_date: startDate || null,
+          due_date: dueDate || null,
+          assigned_to: assignedTo || null,
+          status,
+          total_minutes_spent: timeSpent,
+        })
+        .eq("id", task.id);
+
+      if (taskError) throw taskError;
+
+      // 2. Sincronizar Colaboradores (Limpa e reinsere para simplificar)
+      await supabase.from("task_collaborators").delete().eq("task_id", task.id);
+      if (collaborators.length > 0) {
+        const collData = collaborators.map(uid => ({ task_id: task.id, user_id: uid }));
+        await supabase.from("task_collaborators").insert(collData);
+      }
+
+      toast.success("Alterações salvas no PulseBoard");
+      if (onTaskUpdated) onTaskUpdated();
+      onClose();
+    } catch (error: any) {
+      toast.error("Erro ao sincronizar dados");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from("task_comments").insert({
+      task_id: task.id,
+      user_id: user.id,
+      content: newComment
+    });
+
+    if (!error) {
+      setNewComment("");
+      fetchData(); // Recarrega o chat
+    }
+  };
+
+  const toggleCollaborator = (userId: string) => {
+    setCollaborators(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-sm">
-      <div className="h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white truncate pr-4">{task.title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-          >
+    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/70 backdrop-blur-sm p-4">
+      <div className="absolute inset-0" onClick={onClose} />
+      
+      <div className="relative h-full w-full max-w-lg bg-zinc-950 border border-zinc-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-right duration-300 rounded-l-2xl overflow-hidden">
+        
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-5 bg-zinc-900/30">
+          <input 
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 w-full p-0 placeholder-zinc-700"
+            placeholder="Título da demanda..."
+          />
+          <button onClick={onClose} className="ml-4 p-2 text-zinc-500 hover:text-white transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex border-b border-zinc-800 px-6">
+        {/* Tabs Estilo Terminal */}
+        <div className="flex bg-zinc-900/50 border-b border-zinc-800 px-6">
           <button
             onClick={() => setActiveTab("details")}
-            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "details"
-                ? "border-indigo-500 text-indigo-400"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            className={`py-4 px-6 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
+              activeTab === "details" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            Detalhes
+            Configuração
           </button>
           <button
             onClick={() => setActiveTab("activity")}
-            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "activity"
-                ? "border-indigo-500 text-indigo-400"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
+            className={`py-4 px-6 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
+              activeTab === "activity" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            Atividade
+            Chat de Operação ({comments.length})
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           {activeTab === "details" ? (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-medium text-zinc-400 mb-2">Descrição</h3>
-                <div className="rounded-md border border-zinc-800 bg-zinc-900/50 p-3 text-sm text-zinc-300 min-h-[100px]">
-                  {task.description || "Nenhuma descrição fornecida."}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-zinc-400 mb-2">Status</h3>
-                  <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300">
-                    {task.status}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-zinc-400 mb-2">Responsável</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white text-xs">
-                      {task.profiles?.full_name?.charAt(0) || <User size={12} />}
-                    </div>
-                    <span className="text-sm text-zinc-300">
-                      {task.profiles?.full_name || "Não atribuído"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-zinc-400 mb-2 flex items-center gap-2">
-                  <Paperclip size={16} /> Anexos
-                </h3>
-                <div className="rounded-md border border-dashed border-zinc-700 bg-zinc-900/20 p-6 text-center">
-                  <p className="text-sm text-zinc-500">Arraste arquivos ou clique para fazer upload</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="relative pl-4 border-l border-zinc-800 space-y-6">
-                <div className="relative">
-                  <div className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-indigo-500 ring-4 ring-zinc-900"></div>
-                  <p className="text-sm text-zinc-300">
-                    <span className="font-medium text-white">João Silva</span> criou esta tarefa
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Há 2 horas</p>
-                </div>
-                <div className="relative">
-                  <div className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-zinc-700 ring-4 ring-zinc-900"></div>
-                  <p className="text-sm text-zinc-300">
-                    <span className="font-medium text-white">Maria Almeida</span> alterou o status para <span className="text-indigo-400">Em Progresso</span>
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Há 30 minutos</p>
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <h3 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
-                  <MessageSquare size={16} /> Comentários
-                </h3>
-                <div className="flex gap-3 mb-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white text-sm">
-                    JS
-                  </div>
-                  <div className="flex-1 rounded-md border border-zinc-800 bg-zinc-900/50 p-3">
-                    <p className="text-sm text-zinc-300">
-                      <span className="text-indigo-400 font-medium">@Maria</span> pode verificar os anexos?
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 text-sm">
-                    <User size={16} />
-                  </div>
+            <div className="space-y-8">
+              
+              {/* Cronograma de Duas Datas */}
+              <div className="grid grid-cols-2 gap-6 bg-zinc-900/20 p-4 rounded-xl border border-zinc-800/50">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                    <Calendar size={12} /> Início
+                  </label>
                   <input
-                    type="text"
-                    placeholder="Adicionar um comentário..."
-                    className="flex-1 rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                    <Clock size={12} /> Prazo Final
+                  </label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
+
+              {/* Workflow e Tempo */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold outline-none"
+                  >
+                    <option value="todo">Backlog</option>
+                    <option value="in-progress">Desenvolvimento</option>
+                    <option value="homologation">Homologação</option>
+                    <option value="production">Produção</option>
+                    <option value="done">Concluído</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Tempo Gasto (min)</label>
+                  <input
+                    type="number"
+                    value={timeSpent}
+                    onChange={(e) => setTimeSpent(Number(e.target.value))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Múltiplos Usuários (Responsável + Time) */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Responsável Principal</label>
+                  <select
+                    value={assignedTo}
+                    onChange={(e) => setAssignedTo(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none"
+                  >
+                    <option value="">Não atribuído</option>
+                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                    <UserPlus size={12} /> Colaboradores da Atividade
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {profiles.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => toggleCollaborator(p.id)}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
+                          collaborators.includes(p.id) 
+                          ? "bg-indigo-500/20 border-indigo-500 text-indigo-400" 
+                          : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
+                        }`}
+                      >
+                        {p.full_name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Descrição */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase">Escopo da Tarefa</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-300 min-h-[150px] outline-none focus:border-indigo-500/50"
+                  placeholder="Descreva o que deve ser feito ou os logs de erro..."
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full space-y-6">
+              {/* Feed de Comentários */}
+              <div className="flex-1 space-y-4">
+                {comments.length === 0 && (
+                  <div className="text-center py-10">
+                    <MessageSquare size={40} className="mx-auto text-zinc-800 mb-2" />
+                    <p className="text-xs text-zinc-600 uppercase font-bold">Sem registros de atividade</p>
+                  </div>
+                )}
+                {comments.map((c) => (
+                  <div key={c.id} className="bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-xl space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-indigo-400 uppercase">{c.profiles?.full_name}</span>
+                      <span className="text-[9px] text-zinc-600">{format(new Date(c.created_at), "HH:mm - dd/MM")}</span>
+                    </div>
+                    <p className="text-sm text-zinc-300 leading-relaxed">{c.content}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Input de Chat */}
+              <div className="sticky bottom-0 bg-zinc-950 pt-4 border-t border-zinc-800">
+                <div className="relative">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Mencione alguém ou relate um erro de homologação..."
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-4 pr-12 py-3 text-sm text-white outline-none focus:border-indigo-500 resize-none"
+                    rows={2}
+                  />
+                  <button 
+                    onClick={handleAddComment}
+                    className="absolute right-3 bottom-3 p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <p className="text-[9px] text-zinc-600 mt-2 text-center uppercase tracking-widest">
+                  O histórico de chat é imutável para fins de auditoria
+                </p>
+              </div>
             </div>
           )}
+        </div>
+
+        {/* Rodapé de Ação */}
+        <div className="p-6 bg-zinc-900/30 border-t border-zinc-800 flex gap-4">
+          <button 
+            onClick={handleDelete}
+            className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all border border-red-500/20"
+          >
+            <Trash2 size={20} />
+          </button>
+          <button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-[0_10px_20px_-10px_rgba(79,70,229,0.5)]"
+          >
+            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <><Save size={20} /> Sincronizar Operação</>}
+          </button>
         </div>
       </div>
     </div>

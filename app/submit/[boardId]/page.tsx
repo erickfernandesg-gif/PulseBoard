@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Send, CheckCircle2, AlertCircle, User, Calendar, Tag, AlertTriangle } from "lucide-react";
 
 export default function PublicFormPage() {
   const params = useParams();
@@ -24,24 +24,38 @@ export default function PublicFormPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    const requesterName = formData.get("requesterName") as string;
     const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const priority = formData.get("priority") as string;
+    const category = formData.get("category") as string;
+    const impact = formData.get("impact") as string;
+    const desiredDate = formData.get("desiredDate") as string;
+    const rawDescription = formData.get("description") as string;
 
-    // Adiciona a tarefa diretamente na coluna 'todo' do Board específico
+    // Formata a descrição para incluir os metadados do formulário no topo
+    const finalDescription = `
+👤 SOLICITANTE: ${requesterName}
+📂 CATEGORIA: ${category}
+⚠️ IMPACTO: ${impact}
+📅 PRAZO DESEJADO: ${desiredDate ? new Date(desiredDate).toLocaleDateString('pt-BR') : 'Não informado'}
+
+---
+DESCRIÇÃO:
+${rawDescription}
+    `.trim();
+
     const { error: insertError } = await supabase.from("tasks").insert([
       {
         board_id: boardId,
         title,
-        description,
+        description: finalDescription,
         status: "todo",
-        priority,
+        priority: impact === "Bloqueante" ? "urgent" : impact === "Alto" ? "high" : "medium",
+        due_date: desiredDate || null,
       },
     ]);
 
     if (insertError) {
-      setError("Erro ao enviar a solicitação. Tente novamente.");
-      console.error(insertError);
+      setError("Erro ao enviar a solicitação. Verifique os dados e tente novamente.");
     } else {
       setSuccess(true);
     }
@@ -51,15 +65,15 @@ export default function PublicFormPage() {
   if (success) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-4">
-          <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto" />
-          <h1 className="text-2xl font-bold text-white">Solicitação Recebida!</h1>
-          <p className="text-zinc-400">A sua demanda foi encaminhada com sucesso para a equipe responsável.</p>
+        <div className="max-w-md w-full text-center space-y-4 animate-in fade-in zoom-in duration-300">
+          <CheckCircle2 className="h-20 w-20 text-emerald-500 mx-auto" />
+          <h1 className="text-3xl font-bold text-white">Enviado com Sucesso!</h1>
+          <p className="text-zinc-400">Sua solicitação já está na fila de processamento da equipe.</p>
           <button 
             onClick={() => setSuccess(false)}
-            className="mt-6 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="mt-8 px-6 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg border border-zinc-800 transition-all"
           >
-            Enviar nova solicitação
+            Enviar outra demanda
           </button>
         </div>
       </div>
@@ -67,66 +81,119 @@ export default function PublicFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-      <div className="max-w-lg w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 shadow-xl">
-        <div className="mb-8">
-          <div className="h-10 w-10 bg-indigo-500/10 rounded-lg flex items-center justify-center border border-indigo-500/20 mb-4">
-            <Send className="h-5 w-5 text-indigo-400" />
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center py-12 px-4">
+      <div className="max-w-2xl w-full bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
+        <div className="mb-10 text-center">
+          <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20 mb-4 mx-auto">
+            <Send className="h-6 w-6 text-indigo-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Nova Solicitação</h1>
-          <p className="text-zinc-400 text-sm mt-1">Preencha os dados abaixo para abrir um ticket.</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Portal de Solicitações</h1>
+          <p className="text-zinc-500 text-sm mt-2">Preencha os detalhes abaixo para registrar sua demanda no PulseBoard.</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3 text-red-400 text-sm">
-            <AlertCircle className="h-5 w-5" />
+          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-sm animate-in slide-in-from-top">
+            <AlertCircle className="h-5 w-5 shrink-0" />
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Título da Solicitação *</label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2">
+                <User size={14} /> Seu Nome
+              </label>
+              <input 
+                required
+                name="requesterName"
+                placeholder="Quem está solicitando?"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2">
+                <Calendar size={14} /> Prazo Desejado
+              </label>
+              <input 
+                name="desiredDate"
+                type="date"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2">
+              Título da Demanda
+            </label>
             <input 
               required
               name="title"
-              type="text" 
-              placeholder="Ex: Atualização de banner no site"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+              placeholder="Resumo curto da tarefa"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Descrição Detalhada</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2">
+                <Tag size={14} /> Categoria
+              </label>
+              <select 
+                name="category"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none appearance-none cursor-pointer"
+              >
+                <option value="Suporte">Suporte Técnico</option>
+                <option value="Bug">Relatar Erro/Bug</option>
+                <option value="Melhoria">Sugestão de Melhoria</option>
+                <option value="Novo Projeto">Novo Projeto/Demanda</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2">
+                <AlertTriangle size={14} /> Impacto
+              </label>
+              <select 
+                name="impact"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none appearance-none cursor-pointer"
+              >
+                <option value="Médio">Médio - Rotina normal</option>
+                <option value="Baixo">Baixo - Sem pressa</option>
+                <option value="Alto">Alto - Urgência operacional</option>
+                <option value="Bloqueante">Bloqueante - Trabalho parado</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase">
+              Descrição Detalhada
+            </label>
             <textarea 
+              required
               name="description"
               rows={4}
-              placeholder="Descreva o que precisa ser feito..."
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+              placeholder="Explique o que precisa ser feito com o máximo de detalhes..."
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all outline-none resize-none"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Nível de Prioridade</label>
-            <select 
-              name="priority"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
-            >
-              <option value="low">Baixa (Pode esperar)</option>
-              <option value="medium">Média (Rotina normal)</option>
-              <option value="high">Alta (Urgente / Crítico)</option>
-            </select>
           </div>
 
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 shadow-[0_0_20px_rgba(99,102,241,0.2)]"
           >
-            {loading ? <span className="animate-pulse">Enviando...</span> : "Enviar Solicitação"}
+            {loading ? <span className="animate-pulse">Processando...</span> : <><Send size={18} /> Enviar Solicitação</>}
           </button>
         </form>
       </div>
+      
+      <p className="mt-8 text-zinc-600 text-xs">
+        PulseBoard &copy; 2026 - Gestão Operacional Inteligente
+      </p>
     </div>
   );
 }

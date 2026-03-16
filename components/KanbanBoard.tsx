@@ -14,24 +14,16 @@ import {
   DragOverEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanTask } from "./KanbanTask";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
-const COLUMNS = [
-  { id: "todo", title: "To Do" },
-  { id: "in-progress", title: "In Progress" },
-  { id: "review", title: "Review" },
-  { id: "done", title: "Done" },
-];
-
 export function KanbanBoard({
+  board, // 1. Agora recebemos o objeto board completo do banco
   tasks,
   setTasks,
   profiles,
@@ -41,6 +33,25 @@ export function KanbanBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const supabase = createClient();
 
+  // 2. Lógica de Colunas Dinâmicas
+  // O useMemo garante que se as configurações do quadro mudarem, o Kanban se adapta na hora.
+  const COLUMNS = useMemo(() => {
+    // Se o quadro tiver configurações de colunas no JSONB 'settings', usamos elas.
+    // Caso contrário, usamos um padrão robusto que atende os dois mundos.
+    if (board?.settings && Array.isArray(board.settings)) {
+      return board.settings;
+    }
+
+    // Padrão de fallback (caso o board ainda não tenha a coluna settings configurada)
+    return [
+      { id: "todo", title: "A Fazer" },
+      { id: "in-progress", title: "Em Execução" },
+      { id: "homologation", title: "Homologação" },
+      { id: "production", title: "Produção" },
+      { id: "done", title: "Concluído" },
+    ];
+  }, [board?.settings]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -49,12 +60,12 @@ export function KanbanBoard({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    })
   );
 
   const activeTask = useMemo(
     () => tasks.find((t: any) => t.id === activeId),
-    [activeId, tasks],
+    [activeId, tasks]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -67,7 +78,6 @@ export function KanbanBoard({
 
     const activeId = active.id;
     const overId = over.id;
-
     if (activeId === overId) return;
 
     const isActiveTask = active.data.current?.type === "Task";
@@ -76,27 +86,24 @@ export function KanbanBoard({
 
     if (!isActiveTask) return;
 
-    // Dropping a task over another task
     if (isActiveTask && isOverTask) {
-      setTasks((tasks: any) => {
-        const activeIndex = tasks.findIndex((t: any) => t.id === activeId);
-        const overIndex = tasks.findIndex((t: any) => t.id === overId);
+      setTasks((prevTasks: any) => {
+        const activeIndex = prevTasks.findIndex((t: any) => t.id === activeId);
+        const overIndex = prevTasks.findIndex((t: any) => t.id === overId);
 
-        if (tasks[activeIndex].status !== tasks[overIndex].status) {
-          const updatedTasks = [...tasks];
-          updatedTasks[activeIndex].status = tasks[overIndex].status;
+        if (prevTasks[activeIndex].status !== prevTasks[overIndex].status) {
+          const updatedTasks = [...prevTasks];
+          updatedTasks[activeIndex].status = prevTasks[overIndex].status;
           return arrayMove(updatedTasks, activeIndex, overIndex);
         }
-
-        return arrayMove(tasks, activeIndex, overIndex);
+        return arrayMove(prevTasks, activeIndex, overIndex);
       });
     }
 
-    // Dropping a task over a column
     if (isActiveTask && isOverColumn) {
-      setTasks((tasks: any) => {
-        const activeIndex = tasks.findIndex((t: any) => t.id === activeId);
-        const updatedTasks = [...tasks];
+      setTasks((prevTasks: any) => {
+        const activeIndex = prevTasks.findIndex((t: any) => t.id === activeId);
+        const updatedTasks = [...prevTasks];
         updatedTasks[activeIndex].status = overId;
         return arrayMove(updatedTasks, activeIndex, activeIndex);
       });
@@ -108,30 +115,38 @@ export function KanbanBoard({
     const { active, over } = event;
     if (!over) return;
 
-    const activeId = active.id;
-    const overId = over.id;
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
-    if (activeId === overId) return;
+    let newStatus = null;
+    const isOverColumn = over.data.current?.type === "Column";
+    const isOverTask = over.data.current?.type === "Task";
 
-    const activeIndex = tasks.findIndex((t: any) => t.id === activeId);
-    const task = tasks[activeIndex];
+    if (isOverColumn) {
+      newStatus = overId;
+    } else if (isOverTask) {
+      const overTask = tasks.find((t: any) => t.id === overId);
+      if (overTask) newStatus = overTask.status;
+    }
+
+    if (!newStatus) return;
 
     try {
-      // Update in DB
       const { error } = await supabase
         .from("tasks")
-        .update({ status: task.status, position_index: activeIndex })
-        .eq("id", task.id);
+        .update({ status: newStatus })
+        .eq("id", activeId);
 
       if (error) throw error;
+      if (onTaskUpdated) onTaskUpdated();
     } catch (error: any) {
-      toast.error("Failed to update task status");
-      // Ideally revert state here
+      toast.error("Erro ao sincronizar com o banco de dados.");
+      console.error(error);
     }
   };
 
   return (
-    <div className="flex h-full w-full overflow-x-auto p-4">
+    <div className="flex h-full w-full overflow-x-auto p-4 custom-scrollbar bg-zinc-950/20">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -139,8 +154,8 @@ export function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-6">
-          {COLUMNS.map((col) => (
+        <div className="flex gap-6 min-w-max pb-4">
+          {COLUMNS.map((col: any) => (
             <KanbanColumn
               key={col.id}
               column={col}
@@ -154,7 +169,9 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeId && activeTask ? (
-            <KanbanTask task={activeTask} profiles={profiles} />
+            <div className="opacity-90 rotate-2 scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.5)] cursor-grabbing ring-2 ring-indigo-500/50 rounded-lg">
+              <KanbanTask task={activeTask} profiles={profiles} />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>
