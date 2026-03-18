@@ -1,0 +1,96 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { Activity, ArrowRight, Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+export function ActivityFeed({ boardId }: { boardId?: string }) {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchLogs() {
+      setIsLoading(true);
+      
+      let query = supabase
+        .from("activity_log")
+        .select("*, profiles(full_name)")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      // Se for passado um boardId, mostra apenas a atividade daquele quadro
+      if (boardId) {
+        query = query.eq("board_id", boardId);
+      }
+
+      const { data, error } = await query;
+      
+      if (!error && data) {
+        setLogs(data);
+      }
+      setIsLoading(false);
+    }
+
+    fetchLogs();
+
+    // Opcional: Subscrever alterações em tempo real para o feed atualizar sozinho
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, () => {
+        fetchLogs(); // Atualiza a lista quando há um log novo
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [boardId, supabase]);
+
+  // Função para traduzir a "Ação" da base de dados para texto humano
+  const renderLogAction = (log: any) => {
+    const userName = log.profiles?.full_name?.split(" ")[0] || "Alguém";
+    const details = log.details || {};
+
+    switch (log.action) {
+      case "status_changed":
+        return (
+          <span>
+            <span className="font-bold text-white">{userName}</span> moveu a tarefa <span className="font-semibold text-indigo-400">"{details.task_title}"</span> de <span className="text-zinc-500 line-through">{details.old_status}</span> para <span className="text-emerald-400 font-bold">{details.new_status}</span>
+          </span>
+        );
+      default:
+        return <span><span className="font-bold text-white">{userName}</span> realizou uma ação.</span>;
+    }
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center p-4"><Loader2 className="animate-spin text-zinc-600" size={20} /></div>;
+  }
+
+  if (logs.length === 0) {
+    return <p className="text-xs text-zinc-500 italic p-4">Nenhuma atividade registada ainda.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {logs.map((log) => (
+        <div key={log.id} className="flex gap-3 text-sm">
+          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700">
+            <Activity size={12} className="text-zinc-400" />
+          </div>
+          <div className="flex-1 space-y-1">
+            <p className="text-zinc-300 leading-snug">
+              {renderLogAction(log)}
+            </p>
+            <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">
+              {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: ptBR })}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -152,3 +152,37 @@ ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '[
   {"id": "in-progress", "title": "Em Execução"},
   {"id": "done", "title": "Concluído"}
 ]'::jsonb;
+
+-- 1. Criar a função que gera o log de atividade automaticamente
+CREATE OR REPLACE FUNCTION log_task_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Verifica se o status foi alterado
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO public.activity_log (task_id, board_id, user_id, action, details)
+    VALUES (
+      NEW.id,
+      NEW.board_id,
+      auth.uid(), -- Pega o ID do utilizador logado que fez a ação
+      'status_changed',
+      jsonb_build_object(
+        'old_status', OLD.status,
+        'new_status', NEW.status,
+        'task_title', NEW.title
+      )
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Criar o Gatilho (Trigger) na tabela 'tasks'
+DROP TRIGGER IF EXISTS on_task_status_change ON tasks;
+
+CREATE TRIGGER on_task_status_change
+  AFTER UPDATE OF status ON tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION log_task_status_change();
+
+  ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS last_read_notifications_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());

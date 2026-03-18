@@ -1,105 +1,175 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  KanbanSquare,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Briefcase,
-  BarChart3,
-  PieChart,
-  Zap,
-  FileText,
-  Users,
-  UserCircle
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+import { 
+  LayoutGrid, 
+  KanbanSquare, 
+  BarChart2, 
+  Settings, 
+  LogOut, 
+  Workflow, 
+  Loader2,
+  FolderKanban
 } from "lucide-react";
 import { cn } from "@/utils/cn";
-
-export const navItems = [
-  { name: "Meu Trabalho", href: "/", icon: Briefcase },
-  { name: "Quadros", href: "/boards", icon: KanbanSquare },
-  { name: "Painel Executivo", href: "/executive", icon: BarChart3 },
-  { name: "Relatórios", href: "/reports", icon: PieChart },
-  { name: "Automações", href: "/automations", icon: Zap },
-  { name: "Formulários", href: "/forms", icon: FileText },
-  { name: "Administração", href: "/admin", icon: Users },
-  { name: "Configurações", href: "/settings", icon: UserCircle },
-];
+import { toast } from "sonner";
 
 export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+  
+  const [boards, setBoards] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchSidebarData() {
+      setIsLoading(true);
+      
+      // 1. Busca os dados do usuário logado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        setUserProfile(profile || { full_name: user.email, email: user.email });
+      }
+
+      // 2. Busca todos os quadros para o menu lateral
+      const { data: boardsData } = await supabase
+        .from("boards")
+        .select("id, name")
+        .order("created_at", { ascending: false });
+        
+      if (boardsData) setBoards(boardsData);
+      
+      setIsLoading(false);
+    }
+
+    fetchSidebarData();
+  }, [supabase]);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      toast.error("Erro ao encerrar sessão");
+    }
+  };
+
+  const mainLinks = [
+    { name: "Dashboard", href: "/", icon: LayoutGrid },
+    { name: "Meus Quadros", href: "/boards", icon: KanbanSquare },
+    { name: "Relatórios", href: "/reports", icon: BarChart2 },
+    { name: "Automações", href: "/automations", icon: Workflow },
+    { name: "Configurações", href: "/settings", icon: Settings },
+  ];
 
   return (
-    <aside
-      className={cn(
-        "relative hidden md:flex flex-col border-r border-zinc-800 bg-zinc-900/50 transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64",
-      )}
-    >
-      <div className="flex h-16 items-center justify-between px-4">
-        {!isCollapsed && (
-          <span className="text-lg font-bold tracking-tight text-white">
-            PulseBoard
-          </span>
-        )}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-        >
-          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-        </button>
+    <div className="flex h-full w-64 flex-col bg-zinc-950 border-r border-zinc-800/50">
+      {/* Logo Area */}
+      <div className="flex h-16 items-center px-6 border-b border-zinc-800/50">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+            <FolderKanban className="h-4 w-4 text-white" />
+          </div>
+          <span className="text-lg font-bold text-white tracking-tight">PulseBoard</span>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-2 py-4">
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-indigo-500/10 text-indigo-400"
-                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white",
-              )}
-            >
-              <item.icon
+      <div className="flex-1 overflow-y-auto py-6 custom-scrollbar flex flex-col gap-8">
+        
+        {/* Menu Principal */}
+        <div className="px-4 space-y-1">
+          <p className="px-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Principal</p>
+          {mainLinks.map((link) => {
+            const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+            const Icon = link.icon;
+            
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
                 className={cn(
-                  "mr-3 h-5 w-5 flex-shrink-0",
-                  isActive
-                    ? "text-indigo-400"
-                    : "text-zinc-400 group-hover:text-white",
-                  isCollapsed && "mr-0",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all group",
+                  isActive 
+                    ? "bg-indigo-500/10 text-indigo-400" 
+                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                 )}
-                aria-hidden="true"
-              />
-              {!isCollapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
-      </nav>
+              >
+                <Icon size={18} className={cn("transition-colors", isActive ? "text-indigo-400" : "text-zinc-500 group-hover:text-zinc-300")} />
+                {link.name}
+              </Link>
+            );
+          })}
+        </div>
 
-      {!isCollapsed && (
-        <div className="p-4">
-          <div className="rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 p-4 border border-indigo-500/20">
-            <h3 className="text-sm font-semibold text-white">Pro Plan</h3>
-            <p className="mt-1 text-xs text-zinc-400">
-              Unlock advanced features.
-            </p>
-            <button className="mt-3 w-full rounded-md bg-indigo-500 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-400 transition-colors">
-              Upgrade
-            </button>
+        {/* Dinâmico: Ecossistemas (Quadros) */}
+        <div className="px-4 space-y-1 flex-1">
+          <p className="px-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Meus Ecossistemas</p>
+          
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+            </div>
+          ) : boards.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-zinc-600 italic">Nenhum quadro criado.</p>
+          ) : (
+            boards.map((board) => {
+              const href = `/boards/${board.id}`;
+              const isActive = pathname === href;
+              
+              return (
+                <Link
+                  key={board.id}
+                  href={href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all group",
+                    isActive 
+                      ? "bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700" 
+                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                  )}
+                >
+                  <div className={cn(
+                    "h-2 w-2 rounded-full",
+                    isActive ? "bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" : "bg-zinc-700 group-hover:bg-zinc-500"
+                  )} />
+                  <span className="truncate">{board.name}</span>
+                </Link>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* User Area & Logout */}
+      <div className="border-t border-zinc-800/50 p-4">
+        <div className="flex items-center gap-3 rounded-xl bg-zinc-900/50 p-3 mb-2 border border-zinc-800/50">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm">
+            {userProfile?.full_name?.charAt(0).toUpperCase() || userProfile?.email?.charAt(0).toUpperCase() || "U"}
+          </div>
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="text-sm font-bold text-white truncate">
+              {userProfile?.full_name || "Usuário"}
+            </span>
+            <span className="text-[10px] text-zinc-500 truncate">
+              {userProfile?.email}
+            </span>
           </div>
         </div>
-      )}
-    </aside>
+        
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
+        >
+          <LogOut size={16} />
+          Encerrar Sessão
+        </button>
+      </div>
+    </div>
   );
 }
