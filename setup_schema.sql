@@ -186,3 +186,6 @@ CREATE TRIGGER on_task_status_change
 
   ALTER TABLE profiles 
 ADD COLUMN IF NOT EXISTS last_read_notifications_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
+ALTER TABLE tasks 
+ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
