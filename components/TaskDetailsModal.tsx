@@ -28,18 +28,23 @@ export function TaskDetailsModal({
   const [newComment, setNewComment] = useState("");
   const [collaborators, setCollaborators] = useState<any[]>([]);
 
-  // Estados dos campos editáveis
+  // Novos estados de Apontamento de Horas (Time Tracking)
+  const [timeLogs, setTimeLogs] = useState<any[]>([]);
+  const [newMinutes, setNewMinutes] = useState("");
+  const [timeDescription, setTimeDescription] = useState("");
+  const [isSubmittingTime, setIsSubmittingTime] = useState(false);
+
+  // Estados dos campos editáveis da Tarefa
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [startDate, setStartDate] = useState(task.start_date ? task.start_date.split("T")[0] : "");
   const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split("T")[0] : "");
   const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
   const [status, setStatus] = useState(task.status);
-  const [timeSpent, setTimeSpent] = useState(task.total_minutes_spent || 0);
 
-  // Carregar dados iniciais (Perfis, Comentários e Colaboradores)
+  // Carregar dados iniciais (Perfis, Comentários, Colaboradores e Logs de Tempo)
   const fetchData = useCallback(async () => {
-    const [profRes, commRes, collRes] = await Promise.all([
+    const [profRes, commRes, collRes, timeRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name"),
       supabase.from("task_comments")
         .select("*, profiles(full_name)")
@@ -47,12 +52,17 @@ export function TaskDetailsModal({
         .order("created_at", { ascending: false }),
       supabase.from("task_collaborators")
         .select("user_id, profiles(full_name)")
+        .eq("task_id", task.id),
+      supabase.from("time_logs")
+        .select("*, profiles(full_name)")
         .eq("task_id", task.id)
+        .order("created_at", { ascending: false })
     ]);
 
     if (profRes.data) setProfiles(profRes.data);
     if (commRes.data) setComments(commRes.data);
     if (collRes.data) setCollaborators(collRes.data.map(c => c.user_id));
+    if (timeRes.data) setTimeLogs(timeRes.data);
   }, [supabase, task.id]);
 
   useEffect(() => {
@@ -77,6 +87,7 @@ export function TaskDetailsModal({
       console.error(error);
     }
   };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -90,7 +101,7 @@ export function TaskDetailsModal({
           due_date: dueDate || null,
           assigned_to: assignedTo || null,
           status,
-          total_minutes_spent: timeSpent,
+          // total_minutes_spent removido para evitar conflitos. O histórico real fica na tabela time_logs.
         })
         .eq("id", task.id);
 
@@ -136,6 +147,42 @@ export function TaskDetailsModal({
     );
   };
 
+  // Nova função para registrar o apontamento de horas
+  const handleAddTimeLog = async () => {
+    if (!newMinutes || isNaN(Number(newMinutes)) || Number(newMinutes) <= 0) {
+      toast.error("Insira uma quantidade válida de minutos.");
+      return;
+    }
+    
+    setIsSubmittingTime(true);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Usuário não autenticado.");
+      setIsSubmittingTime(false);
+      return;
+    }
+
+    const { error } = await supabase.from("time_logs").insert({
+      task_id: task.id,
+      user_id: user.id,
+      minutes: Number(newMinutes),
+      description: timeDescription,
+      log_date: new Date().toISOString().split('T')[0]
+    });
+
+    if (error) {
+      toast.error("Erro ao registrar horas. Verifique as permissões.");
+      console.error(error);
+    } else {
+      toast.success("Horas registradas com sucesso!");
+      setNewMinutes("");
+      setTimeDescription("");
+      fetchData(); // Recarrega os apontamentos e histórico
+    }
+    setIsSubmittingTime(false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/70 backdrop-blur-sm p-4">
       <div className="absolute inset-0" onClick={onClose} />
@@ -147,7 +194,7 @@ export function TaskDetailsModal({
           <input 
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 w-full p-0 placeholder-zinc-700"
+            className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 w-full p-0 placeholder-zinc-700 outline-none"
             placeholder="Título da demanda..."
           />
           <button onClick={onClose} className="ml-4 p-2 text-zinc-500 hover:text-white transition-colors">
@@ -205,31 +252,20 @@ export function TaskDetailsModal({
                 </div>
               </div>
 
-              {/* Workflow e Tempo */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold outline-none"
-                  >
-                    <option value="todo">Backlog</option>
-                    <option value="in-progress">Desenvolvimento</option>
-                    <option value="homologation">Homologação</option>
-                    <option value="production">Produção</option>
-                    <option value="done">Concluído</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Tempo Gasto (min)</label>
-                  <input
-                    type="number"
-                    value={timeSpent}
-                    onChange={(e) => setTimeSpent(Number(e.target.value))}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none"
-                  />
-                </div>
+              {/* Workflow Status */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold outline-none focus:border-indigo-500"
+                >
+                  <option value="todo">Backlog</option>
+                  <option value="in-progress">Desenvolvimento</option>
+                  <option value="homologation">Homologação</option>
+                  <option value="production">Produção</option>
+                  <option value="done">Concluído</option>
+                </select>
               </div>
 
               {/* Múltiplos Usuários (Responsável + Time) */}
@@ -239,7 +275,7 @@ export function TaskDetailsModal({
                   <select
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
                   >
                     <option value="">Não atribuído</option>
                     {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
@@ -274,10 +310,64 @@ export function TaskDetailsModal({
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-300 min-h-[150px] outline-none focus:border-indigo-500/50"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-300 min-h-[120px] outline-none focus:border-indigo-500/50"
                   placeholder="Descreva o que deve ser feito ou os logs de erro..."
                 />
               </div>
+
+              {/* NOVA SEÇÃO: Apontamento de Horas */}
+              <div className="space-y-4 border-t border-zinc-800/50 pt-8 mt-6">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                  <Clock size={12} /> Apontamento de Horas (Time Tracking)
+                </label>
+                
+                {/* Formulário de Apontamento */}
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="Minutos"
+                    value={newMinutes}
+                    onChange={(e) => setNewMinutes(e.target.value)}
+                    className="w-24 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="O que foi feito?"
+                    value={timeDescription}
+                    onChange={(e) => setTimeDescription(e.target.value)}
+                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={handleAddTimeLog}
+                    disabled={isSubmittingTime}
+                    className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center"
+                  >
+                    {isSubmittingTime ? <Loader2 size={14} className="animate-spin" /> : "Registrar"}
+                  </button>
+                </div>
+
+                {/* Histórico de Horas */}
+                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2 mt-4">
+                  {timeLogs.map((log) => (
+                    <div key={log.id} className="flex justify-between items-center bg-zinc-900/30 p-3 rounded-lg border border-zinc-800/50">
+                      <div>
+                        <span className="text-xs font-bold text-indigo-400">{log.profiles?.full_name}</span>
+                        <p className="text-[10px] text-zinc-500 mt-1">{log.description || "Sem descrição"}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-white">{log.minutes} min</span>
+                        <p className="text-[9px] text-zinc-600 mt-1">{format(new Date(log.log_date), "dd/MM/yyyy", { locale: ptBR })}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {timeLogs.length === 0 && (
+                    <div className="text-center py-4 text-xs text-zinc-600 border border-dashed border-zinc-800/50 rounded-lg">
+                      Nenhum tempo registrado para esta tarefa.
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
           ) : (
             <div className="flex flex-col h-full space-y-6">
@@ -293,7 +383,7 @@ export function TaskDetailsModal({
                   <div key={c.id} className="bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-xl space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-bold text-indigo-400 uppercase">{c.profiles?.full_name}</span>
-                      <span className="text-[9px] text-zinc-600">{format(new Date(c.created_at), "HH:mm - dd/MM")}</span>
+                      <span className="text-[9px] text-zinc-600">{format(new Date(c.created_at), "HH:mm - dd/MM", { locale: ptBR })}</span>
                     </div>
                     <p className="text-sm text-zinc-300 leading-relaxed">{c.content}</p>
                   </div>

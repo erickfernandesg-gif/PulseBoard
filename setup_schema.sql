@@ -189,3 +189,89 @@ ADD COLUMN IF NOT EXISTS last_read_notifications_at TIMESTAMP WITH TIME ZONE DEF
 
 ALTER TABLE tasks 
 ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
+
+-- 1. Tabela isolada e segura para as taxas financeiras dos usuários
+CREATE TABLE user_rates (
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  hourly_rate DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 2. Tabela para log de horas (Time Tracking real)
+CREATE TABLE time_logs (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  minutes INTEGER NOT NULL CHECK (minutes > 0),
+  log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 3. Habilitar RLS nas novas tabelas
+ALTER TABLE user_rates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE time_logs ENABLE ROW LEVEL SECURITY;
+
+-- 4. Função auxiliar de segurança para verificar se o usuário é gestor
+CREATE OR REPLACE FUNCTION is_manager()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = auth.uid() AND role IN ('admin', 'manager')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Políticas de Segurança (RLS) para Taxas Financeiras
+-- APENAS gestores podem ler, inserir ou atualizar salários.
+CREATE POLICY "Gestores gerenciam taxas" ON user_rates 
+FOR ALL USING (is_manager());
+
+-- 6. Políticas de Segurança (RLS) para Logs de Tempo
+-- Usuários veem apenas seus próprios logs; Gestores veem todos.
+CREATE POLICY "Leitura de time_logs" ON time_logs 
+FOR SELECT USING (auth.uid() = user_id OR is_manager());
+
+-- Usuários só podem inserir logs em seu próprio nome.
+CREATE POLICY "Inserção de time_logs" ON time_logs 
+FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 1. Cria a tabela de Equipes (Teams)
+CREATE TABLE teams (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 2. Adiciona a coluna team_id na tabela profiles atual
+ALTER TABLE profiles 
+ADD COLUMN team_id UUID REFERENCES teams(id) ON DELETE SET NULL;
+
+-- 3. Habilita a segurança (RLS) na tabela de equipes
+ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
+
+-- 4. Cria as políticas de segurança para as Equipes
+-- Todos podem VER as equipes (para o select de filtro funcionar para os usuários)
+CREATE POLICY "Todos podem ver equipes" ON teams FOR SELECT USING (true);
+
+-- Apenas admins/managers podem criar, editar ou deletar equipes
+CREATE POLICY "Gestores gerenciam equipes" ON teams FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager')
+  )
+);
+
+-- Remove a regra antiga
+DROP POLICY IF EXISTS "Gestores gerenciam equipes" ON teams;
+
+-- Cria a regra nova de forma blindada para Leitura e Escrita
+CREATE POLICY "Gestores gerenciam equipes" ON teams 
+FOR ALL 
+USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager'))
+)
+WITH CHECK (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager'))
+);

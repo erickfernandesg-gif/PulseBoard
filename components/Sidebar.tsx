@@ -12,7 +12,9 @@ import {
   LogOut, 
   Workflow, 
   Loader2,
-  FolderKanban
+  FolderKanban,
+  Shield,
+  TrendingUp
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { toast } from "sonner";
@@ -30,11 +32,11 @@ export function Sidebar() {
     async function fetchSidebarData() {
       setIsLoading(true);
       
-      // 1. Busca os dados do usuário logado
+      // 1. Busca os dados do usuário logado (incluindo a 'role')
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-        setUserProfile(profile || { full_name: user.email, email: user.email });
+        setUserProfile(profile || { full_name: user.email, email: user.email, role: 'user' });
       }
 
       // 2. Busca todos os quadros para o menu lateral
@@ -61,13 +63,24 @@ export function Sidebar() {
     }
   };
 
+  // RBAC: Definimos quais cargos podem ver quais menus
   const mainLinks = [
-    { name: "Dashboard", href: "/", icon: LayoutGrid },
-    { name: "Meus Quadros", href: "/boards", icon: KanbanSquare },
-    { name: "Relatórios", href: "/reports", icon: BarChart2 },
-    { name: "Automações", href: "/automations", icon: Workflow },
-    { name: "Configurações", href: "/settings", icon: Settings },
+    { name: "Dashboard", href: "/", icon: LayoutGrid, roles: ["admin", "manager", "user"] },
+    { name: "Meus Quadros", href: "/boards", icon: KanbanSquare, roles: ["admin", "manager", "user"] },
+    // Apenas Gestores e Admins
+    { name: "Painel Executivo", href: "/executive", icon: TrendingUp, roles: ["admin", "manager"] },
+    { name: "Relatórios", href: "/reports", icon: BarChart2, roles: ["admin", "manager", "user"] },
+    { name: "Automações", href: "/automations", icon: Workflow, roles: ["admin", "manager", "user"] },
+    { name: "Configurações", href: "/settings", icon: Settings, roles: ["admin", "manager", "user"] },
+    // Apenas Admins
+    { name: "Administração", href: "/admin", icon: Shield, roles: ["admin"] },
   ];
+
+  // Pega o cargo do usuário atual (se não carregou ainda, assume 'user' por segurança)
+  const userRole = userProfile?.role || "user";
+  
+  // Filtra o menu para mostrar apenas o que o usuário tem permissão para ver
+  const visibleLinks = mainLinks.filter(link => link.roles.includes(userRole));
 
   return (
     <div className="flex h-full w-64 flex-col bg-zinc-950 border-r border-zinc-800/50">
@@ -83,10 +96,10 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto py-6 custom-scrollbar flex flex-col gap-8">
         
-        {/* Menu Principal */}
+        {/* Menu Principal (Filtrado por Permissão) */}
         <div className="px-4 space-y-1">
           <p className="px-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Principal</p>
-          {mainLinks.map((link) => {
+          {visibleLinks.map((link) => {
             const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
             const Icon = link.icon;
             
@@ -149,15 +162,15 @@ export function Sidebar() {
       {/* User Area & Logout */}
       <div className="border-t border-zinc-800/50 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-zinc-900/50 p-3 mb-2 border border-zinc-800/50">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm">
-            {userProfile?.full_name?.charAt(0).toUpperCase() || userProfile?.email?.charAt(0).toUpperCase() || "U"}
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm uppercase">
+            {userProfile?.full_name?.charAt(0) || userProfile?.email?.charAt(0) || "U"}
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-sm font-bold text-white truncate">
               {userProfile?.full_name || "Usuário"}
             </span>
-            <span className="text-[10px] text-zinc-500 truncate">
-              {userProfile?.email}
+            <span className="text-[10px] text-zinc-500 truncate uppercase font-semibold">
+              {userProfile?.role === 'admin' ? 'Administrador' : userProfile?.role === 'manager' ? 'Gestor' : 'Colaborador'}
             </span>
           </div>
         </div>

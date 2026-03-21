@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bell, Search, LogOut, Settings, Activity, CheckCircle2 } from "lucide-react";
+import { Bell, Search, LogOut, Settings, Activity, CheckCircle2, Shield, TrendingUp } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -28,19 +28,19 @@ export function Topbar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Carregar Perfil (agora traz o last_read_notifications_at)
+      // 1. Carregar Perfil (trazendo a 'role' para permissões)
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
       
-      setUserProfile(profile || { full_name: user.email, email: user.email, id: user.id });
+      setUserProfile(profile || { full_name: user.email, email: user.email, id: user.id, role: 'user' });
 
       // O fallback para caso a coluna esteja vazia (ex: primeiro login)
       const lastRead = profile?.last_read_notifications_at || new Date(0).toISOString();
 
-      // 2. Carregar o Histórico de Notificações (Trazemos as últimas 10 para o log)
+      // 2. Carregar o Histórico de Notificações
       const { data: logs } = await supabase
         .from("activity_log")
         .select("*, profiles(full_name), tasks(title, board_id)")
@@ -52,7 +52,7 @@ export function Topbar() {
       if (logs) {
         setNotifications(logs);
         
-        // 3. Lógica Enterprise: Conta apenas o que for mais novo que a data de "Última Leitura"
+        // 3. Conta apenas o que for mais novo que a data de "Última Leitura"
         const unread = logs.filter(log => new Date(log.created_at) > new Date(lastRead)).length;
         setUnreadCount(unread);
       }
@@ -95,14 +95,12 @@ export function Topbar() {
     }
   };
 
-  // 4. A Função Definitiva para Marcar como Lido
   const clearNotifications = async () => {
     if (!userProfile?.id) return;
 
     const now = new Date().toISOString();
 
     try {
-      // Atualiza a "Última Leitura" no Supabase
       const { error } = await supabase
         .from("profiles")
         .update({ last_read_notifications_at: now })
@@ -110,10 +108,7 @@ export function Topbar() {
 
       if (error) throw error;
 
-      // Zera o sino instantaneamente na tela
       setUnreadCount(0);
-      
-      // Atualiza o estado local para evitar que o realtime reacenda o sino incorretamente
       setUserProfile((prev: any) => ({ ...prev, last_read_notifications_at: now }));
       
     } catch (error) {
@@ -155,6 +150,7 @@ export function Topbar() {
 
       <div className="flex items-center gap-4">
         
+        {/* Notificações */}
         <div className="relative" ref={notifRef}>
           <button 
             onClick={() => {
@@ -200,7 +196,6 @@ export function Topbar() {
               ) : (
                 <div className="flex flex-col">
                   {notifications.map((log) => {
-                    // Verifica se esta notificação específica é não-lida (para dar um destaque visual)
                     const isUnread = new Date(log.created_at) > new Date(userProfile?.last_read_notifications_at || 0);
 
                     return (
@@ -238,6 +233,7 @@ export function Topbar() {
 
         <div className="h-6 w-px bg-zinc-800"></div>
 
+        {/* Menu do Perfil */}
         <div className="relative" ref={profileRef}>
           <button 
             onClick={() => {
@@ -246,8 +242,8 @@ export function Topbar() {
             }}
             className="flex items-center gap-3 rounded-full border border-zinc-800 bg-zinc-900/50 p-1 pr-3 transition-all hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 font-bold text-xs text-white shadow-sm">
-              {userProfile?.full_name?.charAt(0).toUpperCase() || userProfile?.email?.charAt(0).toUpperCase() || "U"}
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 font-bold text-xs text-white uppercase shadow-sm">
+              {userProfile?.full_name?.charAt(0) || userProfile?.email?.charAt(0) || "U"}
             </div>
             <span className="text-sm font-medium text-zinc-300 hidden sm:block">
               {userProfile?.full_name?.split(' ')[0] || "Perfil"}
@@ -255,27 +251,51 @@ export function Topbar() {
           </button>
 
           <div className={cn(
-            "absolute right-0 mt-3 w-56 origin-top-right rounded-xl border border-zinc-800 bg-zinc-950 p-1 shadow-2xl transition-all",
+            "absolute right-0 mt-3 w-64 origin-top-right rounded-xl border border-zinc-800 bg-zinc-950 p-1 shadow-2xl transition-all",
             isProfileOpen ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
           )}>
-            <div className="border-b border-zinc-800/50 px-3 py-2.5 mb-1">
+            <div className="border-b border-zinc-800/50 px-3 py-3 mb-1 bg-zinc-900/30 rounded-t-lg">
               <p className="text-sm font-bold text-white truncate">{userProfile?.full_name || "Utilizador"}</p>
-              <p className="text-xs text-zinc-500 truncate">{userProfile?.email}</p>
+              <p className="text-xs text-zinc-500 truncate mb-2">{userProfile?.email}</p>
+              <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                {userProfile?.role === 'admin' ? 'Administrador' : userProfile?.role === 'manager' ? 'Gestor' : 'Colaborador'}
+              </span>
             </div>
             
+            {/* Links Condicionais Baseados em Role */}
+            {userProfile?.role === 'admin' && (
+              <Link 
+                href="/admin" 
+                onClick={() => setIsProfileOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white transition-colors"
+              >
+                <Shield size={16} className="text-indigo-400" /> Administração
+              </Link>
+            )}
+
+            {(userProfile?.role === 'admin' || userProfile?.role === 'manager') && (
+              <Link 
+                href="/executive" 
+                onClick={() => setIsProfileOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white transition-colors border-b border-zinc-800/50 mb-1 pb-3"
+              >
+                <TrendingUp size={16} className="text-emerald-400" /> Dashboard Financeiro
+              </Link>
+            )}
+
             <Link 
               href="/settings" 
               onClick={() => setIsProfileOpen(false)}
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white transition-colors"
             >
-              <Settings size={16} /> Configurações
+              <Settings size={16} /> Configurações Gerais
             </Link>
             
             <button 
               onClick={handleLogout}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 mt-1 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
             >
-              <LogOut size={16} /> Sair
+              <LogOut size={16} /> Sair do Sistema
             </button>
           </div>
         </div>
