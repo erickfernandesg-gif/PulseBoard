@@ -275,3 +275,20 @@ USING (
 WITH CHECK (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager'))
 );
+
+-- 1. Garante que se um Board for deletado, as Tasks sumam junto (Cascade)
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_board_id_fkey;
+ALTER TABLE tasks ADD CONSTRAINT tasks_board_id_fkey 
+  FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE;
+
+-- 2. Garante que se uma Task for deletada, os apontamentos de horas sumam (Cascade)
+ALTER TABLE time_logs DROP CONSTRAINT IF EXISTS time_logs_task_id_fkey;
+ALTER TABLE time_logs ADD CONSTRAINT time_logs_task_id_fkey 
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE;
+
+-- 3. Adiciona campos de gestão moderna aos Quadros (Boards)
+ALTER TABLE boards ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE boards ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'archived'));
+
+-- 4. Adiciona prioridade nas Tarefas
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'critical'));

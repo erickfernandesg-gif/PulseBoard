@@ -1,48 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  DragOverEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
+import { useState, useMemo, useEffect } from "react";
+import { DragDropContext } from "@hello-pangea/dnd";
 import { KanbanColumn } from "./KanbanColumn";
-import { KanbanTask } from "./KanbanTask";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
 export function KanbanBoard({
-  board, // 1. Agora recebemos o objeto board completo do banco
+  board,
   tasks,
   setTasks,
   profiles,
   onTaskUpdated,
   onTaskDeleted,
 }: any) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const supabase = createClient();
 
-  // 2. Lógica de Colunas Dinâmicas
-  // O useMemo garante que se as configurações do quadro mudarem, o Kanban se adapta na hora.
+  // Evita erros de hidratação do Next.js
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const COLUMNS = useMemo(() => {
-    // Se o quadro tiver configurações de colunas no JSONB 'settings', usamos elas.
-    // Caso contrário, usamos um padrão robusto que atende os dois mundos.
     if (board?.settings && Array.isArray(board.settings)) {
       return board.settings;
     }
-
-    // Padrão de fallback (caso o board ainda não tenha a coluna settings configurada)
     return [
       { id: "todo", title: "A Fazer" },
       { id: "in-progress", title: "Em Execução" },
@@ -52,129 +35,65 @@ export function KanbanBoard({
     ];
   }, [board?.settings]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const handleDragEnd = async (result: any) => {
+    const { destination, source, draggableId } = result;
 
-  const activeTask = useMemo(
-    () => tasks.find((t: any) => t.id === activeId),
-    [activeId, tasks]
-  );
+    // Se soltou fora de uma coluna válida, cancela
+    if (!destination) return;
+    
+    // Se soltou no mesmo lugar que estava, cancela
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
+    const newStatus = destination.droppableId;
+    
+    // 1. Atualização Otimista: Muda na tela na mesma hora para sensação de fluidez
+    setTasks((prev: any) => {
+      const updated = [...prev];
+      const taskIndex = updated.findIndex((t: any) => t.id === draggableId);
+      if (taskIndex > -1) {
+        updated[taskIndex] = { ...updated[taskIndex], status: newStatus };
+      }
+      return updated;
+    });
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
+    // Se apenas reordenou na mesma coluna, não salva no banco (a menos que você queira salvar a ordem dps)
+    if (source.droppableId === destination.droppableId) return;
 
-    const activeId = active.id;
-    const overId = over.id;
-    if (activeId === overId) return;
-
-    const isActiveTask = active.data.current?.type === "Task";
-    const isOverTask = over.data.current?.type === "Task";
-    const isOverColumn = over.data.current?.type === "Column";
-
-    if (!isActiveTask) return;
-
-    if (isActiveTask && isOverTask) {
-      setTasks((prevTasks: any) => {
-        const activeIndex = prevTasks.findIndex((t: any) => t.id === activeId);
-        const overIndex = prevTasks.findIndex((t: any) => t.id === overId);
-
-        if (prevTasks[activeIndex].status !== prevTasks[overIndex].status) {
-          const updatedTasks = [...prevTasks];
-          updatedTasks[activeIndex].status = prevTasks[overIndex].status;
-          return arrayMove(updatedTasks, activeIndex, overIndex);
-        }
-        return arrayMove(prevTasks, activeIndex, overIndex);
-      });
-    }
-
-    if (isActiveTask && isOverColumn) {
-      setTasks((prevTasks: any) => {
-        const activeIndex = prevTasks.findIndex((t: any) => t.id === activeId);
-        const updatedTasks = [...prevTasks];
-        updatedTasks[activeIndex].status = overId;
-        return arrayMove(updatedTasks, activeIndex, activeIndex);
-      });
-    }
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    let newStatus = null;
-    const isOverColumn = over.data.current?.type === "Column";
-    const isOverTask = over.data.current?.type === "Task";
-
-    if (isOverColumn) {
-      newStatus = overId;
-    } else if (isOverTask) {
-      const overTask = tasks.find((t: any) => t.id === overId);
-      if (overTask) newStatus = overTask.status;
-    }
-
-    if (!newStatus) return;
-
+    // 2. Salva o novo status no banco de dados
     try {
       const { error } = await supabase
         .from("tasks")
         .update({ status: newStatus })
-        .eq("id", activeId);
+        .eq("id", draggableId);
 
       if (error) throw error;
       if (onTaskUpdated) onTaskUpdated();
     } catch (error: any) {
-      toast.error("Erro ao sincronizar com o banco de dados.");
-      console.error(error);
+      toast.error("Erro ao salvar mudança no banco.");
     }
   };
 
+  if (!isMounted) return null;
+
   return (
     <div className="flex h-full w-full overflow-x-auto p-4 custom-scrollbar bg-zinc-950/20">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-6 min-w-max pb-4">
-          {COLUMNS.map((col: any) => (
-            <KanbanColumn
-              key={col.id}
-              column={col}
-              tasks={tasks.filter((t: any) => t.status === col.id)}
-              profiles={profiles}
-              onTaskUpdated={onTaskUpdated}
-              onTaskDeleted={onTaskDeleted}
-            />
-          ))}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex gap-6 min-w-max pb-4 h-full items-start">
+          {COLUMNS.map((col: any) => {
+            const columnTasks = tasks.filter((t: any) => t.status === col.id);
+            return (
+              <KanbanColumn
+                key={col.id}
+                column={col}
+                tasks={columnTasks}
+                profiles={profiles}
+                onTaskUpdated={onTaskUpdated}
+                onTaskDeleted={onTaskDeleted}
+              />
+            );
+          })}
         </div>
-
-        <DragOverlay>
-          {activeId && activeTask ? (
-            <div className="opacity-90 rotate-2 scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.5)] cursor-grabbing ring-2 ring-indigo-500/50 rounded-lg">
-              <KanbanTask task={activeTask} profiles={profiles} />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      </DragDropContext>
     </div>
   );
 }
