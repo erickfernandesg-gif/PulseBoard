@@ -9,8 +9,16 @@ import { cn } from "@/utils/cn";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+// 1. IMPORTANTE: Importar o tipo User do Supabase
+import { User } from "@supabase/supabase-js";
 
-export function Topbar() {
+// 2. ADICIONAR: Definir o que o componente espera receber
+interface TopbarProps {
+  user: User | null;
+}
+
+// 3. ATUALIZAR: Receber a prop 'user'
+export function Topbar({ user }: TopbarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -25,34 +33,30 @@ export function Topbar() {
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Otimização: Se já recebemos o 'user' via prop, não precisamos chamar supabase.auth.getUser()
+      const currentUser = user; 
+      if (!currentUser) return;
 
       // 1. Carregar Perfil (trazendo a 'role' para permissões)
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", currentUser.id)
         .single();
       
-      setUserProfile(profile || { full_name: user.email, email: user.email, id: user.id, role: 'user' });
+      setUserProfile(profile || { full_name: currentUser.email, email: currentUser.email, id: currentUser.id, role: 'user' });
 
-      // O fallback para caso a coluna esteja vazia (ex: primeiro login)
       const lastRead = profile?.last_read_notifications_at || new Date(0).toISOString();
 
       // 2. Carregar o Histórico de Notificações
       const { data: logs } = await supabase
         .from("activity_log")
         .select("*, profiles(full_name), tasks(title, board_id)")
-        // DICA: Mantenha comentado durante seus testes. Descomente em produção.
-        // .neq("user_id", user.id) 
         .order("created_at", { ascending: false })
         .limit(10);
 
       if (logs) {
         setNotifications(logs);
-        
-        // 3. Conta apenas o que for mais novo que a data de "Última Leitura"
         const unread = logs.filter(log => new Date(log.created_at) > new Date(lastRead)).length;
         setUnreadCount(unread);
       }
@@ -60,7 +64,6 @@ export function Topbar() {
     
     loadData();
 
-    // Ouvinte em tempo real para novos logs
     const channel = supabase
       .channel('topbar-notifications')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, () => {
@@ -83,7 +86,7 @@ export function Topbar() {
       document.removeEventListener("mousedown", handleClickOutside);
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, user]); // Adicionei 'user' aqui como dependência
 
   const handleLogout = async () => {
     try {
@@ -97,9 +100,7 @@ export function Topbar() {
 
   const clearNotifications = async () => {
     if (!userProfile?.id) return;
-
     const now = new Date().toISOString();
-
     try {
       const { error } = await supabase
         .from("profiles")
@@ -107,10 +108,8 @@ export function Topbar() {
         .eq("id", userProfile.id);
 
       if (error) throw error;
-
       setUnreadCount(0);
       setUserProfile((prev: any) => ({ ...prev, last_read_notifications_at: now }));
-      
     } catch (error) {
       console.error(error);
       toast.error("Erro ao registrar leitura de notificações.");
@@ -262,7 +261,6 @@ export function Topbar() {
               </span>
             </div>
             
-            {/* Links Condicionais Baseados em Role */}
             {userProfile?.role === 'admin' && (
               <Link 
                 href="/admin" 
@@ -275,11 +273,11 @@ export function Topbar() {
 
             {(userProfile?.role === 'admin' || userProfile?.role === 'manager') && (
               <Link 
-                href="/executive" 
+                href="/reports" 
                 onClick={() => setIsProfileOpen(false)}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white transition-colors border-b border-zinc-800/50 mb-1 pb-3"
               >
-                <TrendingUp size={16} className="text-emerald-400" /> Dashboard Financeiro
+                <TrendingUp size={16} className="text-emerald-400" /> Relatórios de Operação
               </Link>
             )}
 
