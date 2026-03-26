@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap } from "lucide-react";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
@@ -41,6 +41,9 @@ export function TaskDetailsModal({
   const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split("T")[0] : "");
   const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
   const [status, setStatus] = useState(task.status);
+  
+  // NOVO ESTADO: Mês de Planejamento (Ciclo)
+  const [targetMonth, setTargetMonth] = useState(task.target_month || "");
 
   // Função para formatar minutos em Horas e Minutos (ex: 150m -> 2h 30m)
   const formatMinutes = (totalMinutes: number) => {
@@ -108,6 +111,7 @@ export function TaskDetailsModal({
           due_date: dueDate || null,
           assigned_to: assignedTo || null,
           status,
+          target_month: targetMonth || null, // Salva o mês de planejamento
         })
         .eq("id", task.id);
 
@@ -183,16 +187,13 @@ export function TaskDetailsModal({
       setNewMinutes("");
       setTimeDescription("");
       fetchData();
-      // Chama o update para o Kanban refletir o tempo atualizado no card
       if (onTaskUpdated) onTaskUpdated(); 
     }
     setIsSubmittingTime(false);
   };
 
-  // Atalho para adicionar minutos rapidamente
   const applyQuickTime = (mins: string) => {
     setNewMinutes(mins);
-    // Opcional: focar no campo de descrição após clicar
   };
 
   return (
@@ -264,20 +265,35 @@ export function TaskDetailsModal({
                 </div>
               </div>
 
-              {/* Workflow Status */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold outline-none focus:border-indigo-500"
-                >
-                  <option value="todo">Backlog</option>
-                  <option value="in-progress">Desenvolvimento</option>
-                  <option value="homologation">Homologação</option>
-                  <option value="production">Produção</option>
-                  <option value="done">Concluído</option>
-                </select>
+              {/* Status do Workflow E Mês de Planejamento */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold outline-none focus:border-indigo-500"
+                  >
+                    <option value="backlog">Caixa de Entrada</option>
+                    <option value="todo">Backlog (A Fazer)</option>
+                    <option value="in-progress">Desenvolvimento</option>
+                    <option value="homologation">Homologação</option>
+                    <option value="production">Produção</option>
+                    <option value="done">Concluído</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-2">
+                    <CalendarDays size={12} /> Mês de Planejamento
+                  </label>
+                  <input
+                    type="month"
+                    value={targetMonth}
+                    onChange={(e) => setTargetMonth(e.target.value)}
+                    className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Múltiplos Usuários */}

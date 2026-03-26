@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { Plus, X, Loader2, Calendar as CalendarIcon, User, Clock } from "lucide-react";
+import { Plus, X, Loader2, Calendar as CalendarIcon, User, Clock, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 
 export function CreateTaskModal({
@@ -17,11 +17,14 @@ export function CreateTaskModal({
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("todo");
+  // Inicia na Caixa de Entrada por padrão (Triagem)
+  const [status, setStatus] = useState("backlog"); 
   const [priority, setPriority] = useState("medium");
   const [assignedTo, setAssignedTo] = useState("");
-  const [startDate, setStartDate] = useState(""); // Novo campo
+  const [startDate, setStartDate] = useState(""); 
   const [dueDate, setDueDate] = useState("");
+  // Novo Estado: Mês de Planejamento
+  const [targetMonth, setTargetMonth] = useState(""); 
   const [isLoading, setIsLoading] = useState(false);
 
   const supabase = createClient();
@@ -41,9 +44,10 @@ export function CreateTaskModal({
             status,
             priority,
             assigned_to: assignedTo || null,
-            start_date: startDate || null, // Enviando data de início
+            start_date: startDate || null,
             due_date: dueDate || null,
-            total_minutes_spent: 0, // Inicia zerado
+            target_month: targetMonth || null, // Enviando o mês selecionado
+            total_minutes_spent: 0,
           },
         ])
         .select("*, profiles(full_name, avatar_url)")
@@ -51,18 +55,19 @@ export function CreateTaskModal({
 
       if (error) throw error;
 
-      toast.success("Tarefa criada no PulseBoard");
+      toast.success("Demanda registrada com sucesso");
       onTaskCreated(data);
       setIsOpen(false);
       
       // Resetar formulário
       setTitle("");
       setDescription("");
-      setStatus("todo");
+      setStatus("backlog");
       setPriority("medium");
       setAssignedTo("");
       setStartDate("");
       setDueDate("");
+      setTargetMonth("");
     } catch (error: any) {
       toast.error(error.message || "Falha ao criar tarefa");
     } finally {
@@ -77,7 +82,7 @@ export function CreateTaskModal({
         className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-500 transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] active:scale-95"
       >
         <Plus className="mr-2 h-4 w-4" />
-        Nova Tarefa
+        Nova Demanda
       </button>
 
       {isOpen && (
@@ -136,34 +141,31 @@ export function CreateTaskModal({
                     onChange={(e) => setStatus(e.target.value)}
                     className="block w-full rounded-xl border-0 bg-zinc-900 py-3 px-4 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer"
                   >
-                    <option value="todo">Backlog</option>
+                    <option value="backlog">Caixa de Entrada (Triagem)</option>
+                    <option value="todo">Backlog (A Fazer)</option>
                     <option value="in-progress">Desenvolvimento</option>
                     <option value="homologation">Homologação</option>
                   </select>
                 </div>
 
                 <div>
-                  <label htmlFor="priority" className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">
-                    Prioridade
+                  <label htmlFor="targetMonth" className="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                    <CalendarDays size={12}/> Mês / Ciclo
                   </label>
-                  <select
-                    id="priority"
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                    className="block w-full rounded-xl border-0 bg-zinc-900 py-3 px-4 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="low">Baixa</option>
-                    <option value="medium">Média</option>
-                    <option value="high">Alta</option>
-                    <option value="urgent">Urgente</option>
-                  </select>
+                  <input
+                    type="month"
+                    id="targetMonth"
+                    value={targetMonth}
+                    onChange={(e) => setTargetMonth(e.target.value)}
+                    className="block w-full rounded-xl border-0 bg-emerald-500/10 py-3 px-4 text-emerald-400 font-bold ring-1 ring-inset ring-emerald-500/30 focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer"
+                  />
                 </div>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-5 pt-2">
                 <div>
                   <label htmlFor="assignee" className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">
-                    Responsável Principal
+                    Responsável (Opcional)
                   </label>
                   <div className="relative mt-1">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -236,7 +238,7 @@ export function CreateTaskModal({
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                  Criar Atividade
+                  Criar Demanda
                 </button>
               </div>
             </form>

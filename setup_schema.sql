@@ -230,3 +230,5 @@ CREATE POLICY "Usuário vê as próprias horas e do time" ON time_logs FOR SELEC
 CREATE POLICY "Usuário insere as próprias horas" ON time_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Usuário edita/deleta as próprias horas" ON time_logs FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Usuário deleta as próprias horas" ON time_logs FOR DELETE USING (auth.uid() = user_id);
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_month VARCHAR(7);
