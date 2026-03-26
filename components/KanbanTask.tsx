@@ -4,12 +4,26 @@ import { Draggable } from "@hello-pangea/dnd";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, User } from "lucide-react";
+import { Calendar, User, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { TaskDetailsModal } from "./TaskDetailsModal";
 import { cn } from "@/utils/cn";
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+
+// A ordem exata das suas colunas
+const STATUS_ORDER = [
+  "backlog",
+  "todo",
+  "in-progress",
+  "homologation",
+  "production",
+  "done"
+];
 
 export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const supabase = createClient();
 
   const priorityColors: Record<string, string> = {
     low: "bg-zinc-800 text-zinc-300 border-zinc-700",
@@ -25,6 +39,38 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
     critical: "Crítica",
   };
 
+  // Descobre onde o card está agora
+  const currentStatusIndex = STATUS_ORDER.indexOf(task.status || "todo");
+  const canMoveLeft = currentStatusIndex > 0;
+  const canMoveRight = currentStatusIndex < STATUS_ORDER.length - 1;
+
+  // Função para mover a tarefa via clique
+  const handleMove = async (direction: "left" | "right", e: React.MouseEvent) => {
+    e.stopPropagation(); // Impede que o clique abra o modal da tarefa
+    if (isMoving) return;
+
+    const newIndex = direction === "left" ? currentStatusIndex - 1 : currentStatusIndex + 1;
+    const newStatus = STATUS_ORDER[newIndex];
+
+    setIsMoving(true);
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: newStatus })
+        .eq("id", task.id);
+
+      if (error) throw error;
+      
+      // Atualiza o quadro imediatamente
+      if (onTaskUpdated) onTaskUpdated();
+    } catch (error) {
+      toast.error("Erro ao mover a tarefa.");
+      console.error(error);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
   return (
     <>
       <Draggable draggableId={task.id} index={index}>
@@ -33,15 +79,17 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            onClick={() => setIsModalOpen(true)}
             className={cn(
-              "group flex cursor-grab flex-col gap-3 rounded-xl border bg-zinc-950 p-4 shadow-sm transition-all hover:border-indigo-500/50 active:cursor-grabbing",
-              snapshot.isDragging ? "rotate-2 scale-105 border-indigo-500 shadow-2xl z-50 ring-2 ring-indigo-500/20 opacity-90" : "border-zinc-800"
+              "group flex flex-col gap-3 rounded-xl border bg-zinc-950 p-4 shadow-sm transition-colors relative",
+              snapshot.isDragging 
+                ? "border-indigo-500 shadow-2xl z-50 ring-2 ring-indigo-500/20 bg-zinc-900 opacity-95" 
+                : "border-zinc-800 hover:border-zinc-700"
             )}
             style={{
               ...provided.draggableProps.style,
             }}
           >
+            {/* Cabeçalho do Card: Prioridade + Setinhas de Mover */}
             <div className="flex items-start justify-between gap-2">
               <span
                 className={cn(
@@ -51,18 +99,50 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
               >
                 {priorityLabels[task.priority || "medium"]}
               </span>
+              
+              {/* === OS BOTÕES DE SETA (Mover Fácil) === */}
+              <div className="flex items-center gap-1">
+                {isMoving && <Loader2 size={12} className="animate-spin text-indigo-500 mr-1" />}
+                
+                {canMoveLeft && (
+                  <button
+                    onClick={(e) => handleMove("left", e)}
+                    disabled={isMoving}
+                    className="p-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 transition-colors disabled:opacity-50"
+                    title="Voltar etapa"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                )}
+                
+                {canMoveRight && (
+                  <button
+                    onClick={(e) => handleMove("right", e)}
+                    disabled={isMoving}
+                    className="p-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 transition-colors disabled:opacity-50"
+                    title="Avançar etapa"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div>
-              <h4 className="font-semibold text-white text-sm">{task.title}</h4>
+            {/* Corpo do Card (Clicável para abrir Detalhes) */}
+            <div onClick={() => setIsModalOpen(true)} className="cursor-pointer group-hover:text-indigo-100">
+              <h4 className="font-semibold text-white text-sm transition-colors leading-tight">{task.title}</h4>
               {task.description && (
-                <p className="mt-2 line-clamp-2 text-xs text-zinc-500">
+                <p className="mt-2 line-clamp-2 text-xs text-zinc-500 leading-relaxed">
                   {task.description}
                 </p>
               )}
             </div>
 
-            <div className="mt-2 flex items-center justify-between border-t border-zinc-800/50 pt-3">
+            {/* Rodapé (Clicável para abrir Detalhes) */}
+            <div 
+              className="mt-2 flex items-center justify-between border-t border-zinc-800/50 pt-3 cursor-pointer"
+              onClick={() => setIsModalOpen(true)}
+            >
               <div className="flex items-center gap-3 text-xs text-zinc-500">
                 {task.due_date ? (
                   <div className="flex items-center gap-1 font-medium">

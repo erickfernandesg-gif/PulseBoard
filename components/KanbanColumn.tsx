@@ -18,23 +18,24 @@ export function KanbanColumn({ column, tasks, profiles, onTaskUpdated, onTaskDel
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 overflow-y-auto p-3 custom-scrollbar min-h-[150px] transition-colors ${
+            /* CORREÇÃO DA COLUNA: Adicionamos o gap-3 aqui, e removemos a div interna extra. 
+               Isto é crucial para o cálculo correto da biblioteca.
+            */
+            className={`flex-1 flex flex-col gap-3 overflow-y-auto p-3 custom-scrollbar min-h-[150px] transition-colors ${
               snapshot.isDraggingOver ? "bg-indigo-500/5" : ""
             }`}
           >
-            <div className="flex flex-col gap-3">
-              {tasks.map((task: any, index: number) => (
-                <KanbanTask
-                  key={task.id}
-                  task={task}
-                  index={index}
-                  profiles={profiles}
-                  onTaskUpdated={onTaskUpdated}
-                  onTaskDeleted={onTaskDeleted}
-                />
-              ))}
-              {provided.placeholder}
-            </div>
+            {tasks.map((task: any, index: number) => (
+              <KanbanTask
+                key={task.id}
+                task={task}
+                index={index}
+                profiles={profiles}
+                onTaskUpdated={onTaskUpdated}
+                onTaskDeleted={onTaskDeleted}
+              />
+            ))}
+            {provided.placeholder}
           </div>
         )}
       </Droppable>
