@@ -4,7 +4,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, User, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Calendar, User, ChevronLeft, ChevronRight, Loader2, AlertOctagon } from "lucide-react";
 import { TaskDetailsModal } from "./TaskDetailsModal";
 import { cn } from "@/utils/cn";
 import { createClient } from "@/utils/supabase/client";
@@ -80,17 +80,24 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
             {...provided.draggableProps}
             {...provided.dragHandleProps}
             className={cn(
-              "group flex flex-col gap-3 rounded-xl border bg-zinc-950 p-4 shadow-sm transition-colors relative",
+              "group flex flex-col gap-3 rounded-xl border p-4 shadow-sm transition-all relative overflow-hidden",
               snapshot.isDragging 
                 ? "border-indigo-500 shadow-2xl z-50 ring-2 ring-indigo-500/20 bg-zinc-900 opacity-95" 
-                : "border-zinc-800 hover:border-zinc-700"
+                : task.is_blocked
+                  ? "border-red-500/50 bg-[#1a0f0f] hover:border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.1)]" // Visual de Impedimento
+                  : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
             )}
             style={{
               ...provided.draggableProps.style,
             }}
           >
+            {/* Faixa lateral de bloqueio (Visual Indicativo Animado) */}
+            {task.is_blocked && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 animate-pulse" />
+            )}
+
             {/* Cabeçalho do Card: Prioridade + Setinhas de Mover */}
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-2 relative z-10">
               <span
                 className={cn(
                   "inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest",
@@ -129,18 +136,32 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
             </div>
 
             {/* Corpo do Card (Clicável para abrir Detalhes) */}
-            <div onClick={() => setIsModalOpen(true)} className="cursor-pointer group-hover:text-indigo-100">
+            <div onClick={() => setIsModalOpen(true)} className="cursor-pointer group-hover:text-indigo-100 relative z-10">
               <h4 className="font-semibold text-white text-sm transition-colors leading-tight">{task.title}</h4>
-              {task.description && (
-                <p className="mt-2 line-clamp-2 text-xs text-zinc-500 leading-relaxed">
-                  {task.description}
-                </p>
+              
+              {/* ALERTA DE BLOQUEIO OU DESCRIÇÃO */}
+              {task.is_blocked ? (
+                <div className="mt-3 flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
+                  <AlertOctagon size={14} className="text-red-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-bold uppercase text-[9px] text-red-500 tracking-wider block mb-0.5">Impedimento Ativo</span>
+                    <p className="text-xs text-red-200 font-medium leading-tight line-clamp-2">
+                      {task.blocker_reason || "Bloqueada sem motivo detalhado."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                task.description && (
+                  <p className="mt-2 line-clamp-2 text-xs text-zinc-500 leading-relaxed">
+                    {task.description}
+                  </p>
+                )
               )}
             </div>
 
             {/* Rodapé (Clicável para abrir Detalhes) */}
             <div 
-              className="mt-2 flex items-center justify-between border-t border-zinc-800/50 pt-3 cursor-pointer"
+              className="mt-2 flex items-center justify-between border-t border-zinc-800/50 pt-3 cursor-pointer relative z-10"
               onClick={() => setIsModalOpen(true)}
             >
               <div className="flex items-center gap-3 text-xs text-zinc-500">

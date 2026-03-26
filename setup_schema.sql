@@ -243,3 +243,6 @@ CREATE TABLE IF NOT EXISTS automations (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+
+ALTER TABLE tasks ADD COLUMN is_blocked BOOLEAN DEFAULT false;
+ALTER TABLE tasks ADD COLUMN blocker_reason TEXT;

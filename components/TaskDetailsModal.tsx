@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays } from "lucide-react";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/utils/cn";
 
 interface TaskDetailsModalProps {
   task: any;
@@ -41,6 +42,9 @@ export function TaskDetailsModal({
   const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split("T")[0] : "");
   const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
   const [status, setStatus] = useState(task.status);
+  // Estados de Bloqueio
+  const [isBlocked, setIsBlocked] = useState(task.is_blocked || false);
+  const [blockerReason, setBlockerReason] = useState(task.blocker_reason || "");
   
   // NOVO ESTADO: Mês de Planejamento (Ciclo)
   const [targetMonth, setTargetMonth] = useState(task.target_month || "");
@@ -112,6 +116,8 @@ export function TaskDetailsModal({
           assigned_to: assignedTo || null,
           status,
           target_month: targetMonth || null, // Salva o mês de planejamento
+          is_blocked: isBlocked,
+          blocker_reason: isBlocked ? blockerReason : null,
         })
         .eq("id", task.id);
 
@@ -295,7 +301,57 @@ export function TaskDetailsModal({
                   />
                 </div>
               </div>
-
+{/* === MÓDULO DE IMPEDIMENTO (BLOCKER) === */}
+              <div className={cn(
+                "p-5 rounded-xl border transition-all duration-300",
+                isBlocked ? "bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.05)]" : "bg-zinc-900/20 border-zinc-800/50"
+              )}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-2.5 rounded-lg transition-colors",
+                      isBlocked ? "bg-red-500/20 text-red-500" : "bg-zinc-800 text-zinc-500"
+                    )}>
+                      <AlertOctagon size={18} />
+                    </div>
+                    <div>
+                      <h4 className={cn("text-sm font-bold transition-colors", isBlocked ? "text-red-400" : "text-zinc-400")}>
+                        {isBlocked ? "Tarefa com Impedimento" : "Sinalizar Bloqueio"}
+                      </h4>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
+                        Alerta a equipe sobre dependências ou travamentos
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={() => setIsBlocked(!isBlocked)}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                      isBlocked ? "bg-red-500" : "bg-zinc-700"
+                    )}
+                  >
+                    <span className={cn(
+                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                      isBlocked ? "translate-x-5" : "translate-x-0"
+                    )} />
+                  </button>
+                </div>
+                
+                {isBlocked && (
+                  <div className="mt-5 pt-5 border-t border-red-500/20 animate-in fade-in slide-in-from-top-2">
+                    <label className="text-[10px] font-bold text-red-400 uppercase mb-2 block">Motivo do Bloqueio (O que falta para avançar?)</label>
+                    <textarea
+                      value={blockerReason}
+                      onChange={(e) => setBlockerReason(e.target.value)}
+                      placeholder="Ex: Aguardando senha de acesso da API do cliente..."
+                      className="w-full bg-red-950/30 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-200 outline-none focus:border-red-500 placeholder-red-800/50 min-h-[80px] resize-none"
+                    />
+                  </div>
+                )}
+              </div>
               {/* Múltiplos Usuários */}
               <div className="space-y-4">
                 <div className="space-y-2">
