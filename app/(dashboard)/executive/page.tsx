@@ -43,7 +43,13 @@ export default async function ExecutiveDashboard() {
     supabase.from('user_rates').select('user_id, hourly_rate')
   ]);
 
-  // 3. Lógica de Agregação Financeira (Segura, rodando no servidor)
+  // ============================================================================
+  // OTIMIZAÇÃO DE PERFORMANCE (Para suportar milhares de registros sem travar)
+  // ============================================================================
+  
+  // Cria um Dicionário (Map) de taxas para busca instantânea O(1)
+  const ratesMap = new Map(userRates?.map(r => [r.user_id, Number(r.hourly_rate)]) || []);
+
   let totalGlobalCost = 0;
   let totalGlobalMinutes = 0;
   const uniqueUsersLoggingTime = new Set();
@@ -52,22 +58,22 @@ export default async function ExecutiveDashboard() {
     let boardCost = 0;
     let boardMinutes = 0;
 
-    // Filtra tarefas que pertencem a este board
+    // Filtra tarefas que pertencem a este board e cria um Set para busca O(1)
     const boardTasks = tasks?.filter(t => t.board_id === board.id) || [];
-    const taskIds = boardTasks.map(t => t.id);
+    const taskIds = new Set(boardTasks.map(t => t.id));
 
     // Filtra apontamentos de horas que pertencem às tarefas deste board
-    const boardLogs = timeLogs?.filter(log => taskIds.includes(log.task_id)) || [];
+    const boardLogs = timeLogs?.filter(log => taskIds.has(log.task_id)) || [];
 
     boardLogs.forEach(log => {
       boardMinutes += log.minutes;
       uniqueUsersLoggingTime.add(log.user_id);
       
-      // Busca o valor/hora do usuário. Se não existir na tabela user_rates, considera R$ 0,00.
-      const userRate = userRates?.find(r => r.user_id === log.user_id)?.hourly_rate || 0;
+      // Busca a taxa instantaneamente no Map. Se não achar, R$ 0,00.
+      const userRate = ratesMap.get(log.user_id) || 0;
       
       // Custo = (minutos / 60) * valor_da_hora
-      const costForThisLog = (log.minutes / 60) * Number(userRate);
+      const costForThisLog = (log.minutes / 60) * userRate;
       boardCost += costForThisLog;
     });
 
@@ -82,28 +88,38 @@ export default async function ExecutiveDashboard() {
     };
   }).sort((a, b) => b.cost - a.cost) || []; // Ordena dos projetos mais caros para os mais baratos
 
+  // BI: Custo médio da hora da empresa (Prevenção de divisão por zero)
+  const totalGlobalHours = totalGlobalMinutes / 60;
+  const averageHourlyCost = totalGlobalHours > 0 ? (totalGlobalCost / totalGlobalHours) : 0;
+
   return (
     <div className="mx-auto max-w-7xl pb-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <TrendingUp className="text-emerald-500" />
           Painel Executivo de Custos
         </h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Visão confidencial de produtividade e custo operacional em tempo real.
+          Visão confidencial de produtividade e queima de caixa em tempo real.
         </p>
       </div>
 
       {/* KPIs Globais Calculados */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8" />
           <div className="flex items-center gap-3 text-emerald-400 mb-2">
             <DollarSign size={20} />
-            <span className="text-sm font-medium">Custo Operacional Total</span>
+            <span className="text-sm font-medium">Custo Operacional</span>
           </div>
-          <p className="text-3xl font-bold text-white">
+          <p className="text-3xl font-bold text-white relative z-10">
             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGlobalCost)}
           </p>
-          <p className="text-xs text-zinc-500 mt-1">Gasto total baseado em horas</p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-zinc-500 font-medium bg-zinc-800 px-2 py-0.5 rounded">
+              Média: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(averageHourlyCost)} / hora
+            </span>
+          </div>
         </div>
         
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
@@ -111,8 +127,8 @@ export default async function ExecutiveDashboard() {
             <Clock size={20} />
             <span className="text-sm font-medium">Horas Produtivas</span>
           </div>
-          <p className="text-3xl font-bold text-white">{(totalGlobalMinutes / 60).toFixed(0)}h</p>
-          <p className="text-xs text-zinc-500 mt-1">Registradas em tarefas</p>
+          <p className="text-3xl font-bold text-white">{totalGlobalHours.toFixed(0)}h</p>
+          <p className="text-xs text-zinc-500 mt-1">Registradas em atividades</p>
         </div>
 
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
@@ -130,7 +146,7 @@ export default async function ExecutiveDashboard() {
             <span className="text-sm font-medium">Colaboradores</span>
           </div>
           <p className="text-3xl font-bold text-white">{uniqueUsersLoggingTime.size}</p>
-          <p className="text-xs text-zinc-500 mt-1">Registrando tempo ativo</p>
+          <p className="text-xs text-zinc-500 mt-1">Registrando tempo ativamente</p>
         </div>
       </div>
 
@@ -142,7 +158,7 @@ export default async function ExecutiveDashboard() {
             Distribuição de Custos por Projeto
           </h3>
           <p className="text-xs text-zinc-500 mt-1">
-            Custos calculados cruzando o time tracking dos colaboradores com seus respectivos salários/hora.
+            Custos consolidados baseados no time tracking e valor/hora individual dos membros da equipe.
           </p>
         </div>
         
@@ -182,7 +198,7 @@ export default async function ExecutiveDashboard() {
               <tfoot className="bg-zinc-900/60 border-t border-zinc-800 font-bold">
                 <tr>
                   <td className="px-6 py-4 text-white">TOTAL GLOBAL</td>
-                  <td className="px-6 py-4 text-right text-zinc-300">{(totalGlobalMinutes / 60).toFixed(1)}h</td>
+                  <td className="px-6 py-4 text-right text-zinc-300">{totalGlobalHours.toFixed(1)}h</td>
                   <td className="px-6 py-4 text-right text-emerald-400">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGlobalCost)}
                   </td>

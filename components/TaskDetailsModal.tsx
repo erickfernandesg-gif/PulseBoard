@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Paperclip, MessageSquare, User, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus } from "lucide-react";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
@@ -28,7 +28,7 @@ export function TaskDetailsModal({
   const [newComment, setNewComment] = useState("");
   const [collaborators, setCollaborators] = useState<any[]>([]);
 
-  // Novos estados de Apontamento de Horas (Time Tracking)
+  // Estados de Apontamento de Horas (Time Tracking)
   const [timeLogs, setTimeLogs] = useState<any[]>([]);
   const [newMinutes, setNewMinutes] = useState("");
   const [timeDescription, setTimeDescription] = useState("");
@@ -42,7 +42,18 @@ export function TaskDetailsModal({
   const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
   const [status, setStatus] = useState(task.status);
 
-  // Carregar dados iniciais (Perfis, Comentários, Colaboradores e Logs de Tempo)
+  // Função para formatar minutos em Horas e Minutos (ex: 150m -> 2h 30m)
+  const formatMinutes = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours === 0) return `${mins}m`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}m`;
+  };
+
+  const totalTimeSpent = timeLogs.reduce((acc, log) => acc + log.minutes, 0);
+
+  // Carregar dados iniciais
   const fetchData = useCallback(async () => {
     const [profRes, commRes, collRes, timeRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name"),
@@ -70,17 +81,14 @@ export function TaskDetailsModal({
   }, [fetchData]);
 
   const handleDelete = async () => {
-    if (!window.confirm("Tem certeza que deseja excluir esta tarefa?")) return;
+    if (!window.confirm("Tem certeza que deseja excluir esta tarefa? O histórico será perdido.")) return;
 
     try {
       const { error } = await supabase.from("tasks").delete().eq("id", task.id);
       if (error) throw error;
 
       toast.success("Tarefa excluída com sucesso");
-      
-      // Chama a função passando o ID para o Kanban remover o card certo
       if (onTaskDeleted) onTaskDeleted(task.id);
-      
       onClose();
     } catch (error: any) {
       toast.error("Erro ao excluir a tarefa");
@@ -91,7 +99,6 @@ export function TaskDetailsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // 1. Atualizar Tarefa Principal
       const { error: taskError } = await supabase
         .from("tasks")
         .update({
@@ -101,13 +108,11 @@ export function TaskDetailsModal({
           due_date: dueDate || null,
           assigned_to: assignedTo || null,
           status,
-          // total_minutes_spent removido para evitar conflitos. O histórico real fica na tabela time_logs.
         })
         .eq("id", task.id);
 
       if (taskError) throw taskError;
 
-      // 2. Sincronizar Colaboradores (Limpa e reinsere para simplificar)
       await supabase.from("task_collaborators").delete().eq("task_id", task.id);
       if (collaborators.length > 0) {
         const collData = collaborators.map(uid => ({ task_id: task.id, user_id: uid }));
@@ -137,7 +142,7 @@ export function TaskDetailsModal({
 
     if (!error) {
       setNewComment("");
-      fetchData(); // Recarrega o chat
+      fetchData();
     }
   };
 
@@ -147,7 +152,6 @@ export function TaskDetailsModal({
     );
   };
 
-  // Nova função para registrar o apontamento de horas
   const handleAddTimeLog = async () => {
     if (!newMinutes || isNaN(Number(newMinutes)) || Number(newMinutes) <= 0) {
       toast.error("Insira uma quantidade válida de minutos.");
@@ -178,9 +182,17 @@ export function TaskDetailsModal({
       toast.success("Horas registradas com sucesso!");
       setNewMinutes("");
       setTimeDescription("");
-      fetchData(); // Recarrega os apontamentos e histórico
+      fetchData();
+      // Chama o update para o Kanban refletir o tempo atualizado no card
+      if (onTaskUpdated) onTaskUpdated(); 
     }
     setIsSubmittingTime(false);
+  };
+
+  // Atalho para adicionar minutos rapidamente
+  const applyQuickTime = (mins: string) => {
+    setNewMinutes(mins);
+    // Opcional: focar no campo de descrição após clicar
   };
 
   return (
@@ -268,7 +280,7 @@ export function TaskDetailsModal({
                 </select>
               </div>
 
-              {/* Múltiplos Usuários (Responsável + Time) */}
+              {/* Múltiplos Usuários */}
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Responsável Principal</label>
@@ -315,31 +327,50 @@ export function TaskDetailsModal({
                 />
               </div>
 
-              {/* NOVA SEÇÃO: Apontamento de Horas */}
+              {/* SEÇÃO OTIMIZADA: Apontamento de Horas */}
               <div className="space-y-4 border-t border-zinc-800/50 pt-8 mt-6">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                  <Clock size={12} /> Apontamento de Horas (Time Tracking)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                    <Clock size={12} /> Apontamento de Horas
+                  </label>
+                  {totalTimeSpent > 0 && (
+                    <span className="text-xs font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full">
+                      Total: {formatMinutes(totalTimeSpent)}
+                    </span>
+                  )}
+                </div>
                 
+                {/* Botões de Quick Add (Fricção Zero) */}
+                <div className="flex gap-2">
+                  <span className="text-[10px] text-zinc-600 flex items-center mr-1"><Zap size={10} className="mr-1"/> Atalhos:</span>
+                  <button onClick={() => applyQuickTime("15")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">15m</button>
+                  <button onClick={() => applyQuickTime("30")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">30m</button>
+                  <button onClick={() => applyQuickTime("60")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">1h</button>
+                  <button onClick={() => applyQuickTime("120")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">2h</button>
+                </div>
+
                 {/* Formulário de Apontamento */}
                 <div className="flex gap-2">
-                  <input
-                    type="number"
-                    placeholder="Minutos"
-                    value={newMinutes}
-                    onChange={(e) => setNewMinutes(e.target.value)}
-                    className="w-24 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
-                  />
+                  <div className="relative w-24">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={newMinutes}
+                      onChange={(e) => setNewMinutes(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-3 pr-8 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                    />
+                    <span className="absolute right-3 top-2 text-xs text-zinc-600">m</span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="O que foi feito?"
+                    placeholder="O que foi feito neste tempo?"
                     value={timeDescription}
                     onChange={(e) => setTimeDescription(e.target.value)}
-                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
                   />
                   <button
                     onClick={handleAddTimeLog}
-                    disabled={isSubmittingTime}
+                    disabled={isSubmittingTime || !newMinutes}
                     className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center"
                   >
                     {isSubmittingTime ? <Loader2 size={14} className="animate-spin" /> : "Registrar"}
@@ -352,16 +383,16 @@ export function TaskDetailsModal({
                     <div key={log.id} className="flex justify-between items-center bg-zinc-900/30 p-3 rounded-lg border border-zinc-800/50">
                       <div>
                         <span className="text-xs font-bold text-indigo-400">{log.profiles?.full_name}</span>
-                        <p className="text-[10px] text-zinc-500 mt-1">{log.description || "Sem descrição"}</p>
+                        <p className="text-[10px] text-zinc-500 mt-1">{log.description || "Tempo registrado (sem descrição)"}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs font-bold text-white">{log.minutes} min</span>
-                        <p className="text-[9px] text-zinc-600 mt-1">{format(new Date(log.log_date), "dd/MM/yyyy", { locale: ptBR })}</p>
+                        <span className="text-xs font-bold text-white">{formatMinutes(log.minutes)}</span>
+                        <p className="text-[9px] text-zinc-600 mt-1">{format(new Date(log.log_date), "dd/MM/yy", { locale: ptBR })}</p>
                       </div>
                     </div>
                   ))}
                   {timeLogs.length === 0 && (
-                    <div className="text-center py-4 text-xs text-zinc-600 border border-dashed border-zinc-800/50 rounded-lg">
+                    <div className="text-center py-6 text-xs text-zinc-600 border border-dashed border-zinc-800/50 rounded-lg bg-zinc-900/10">
                       Nenhum tempo registrado para esta tarefa.
                     </div>
                   )}
@@ -420,6 +451,7 @@ export function TaskDetailsModal({
           <button 
             onClick={handleDelete}
             className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all border border-red-500/20"
+            title="Excluir Tarefa"
           >
             <Trash2 size={20} />
           </button>
