@@ -232,3 +232,14 @@ CREATE POLICY "Usuário edita/deleta as próprias horas" ON time_logs FOR UPDATE
 CREATE POLICY "Usuário deleta as próprias horas" ON time_logs FOR DELETE USING (auth.uid() = user_id);
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_month VARCHAR(7);
+
+CREATE TABLE IF NOT EXISTS automations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  trigger_type VARCHAR(50) NOT NULL, -- Ex: 'status_change'
+  trigger_value VARCHAR(50) NOT NULL, -- Ex: 'done'
+  action_type VARCHAR(50) NOT NULL, -- Ex: 'notify_manager', 'assign_user'
+  action_payload VARCHAR(255), -- ID do usuário ou email
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
