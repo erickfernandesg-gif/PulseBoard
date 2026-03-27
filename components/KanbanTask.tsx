@@ -30,6 +30,10 @@ interface JoinedTaskClient {
   name: string | null;
 }
 
+interface JoinedCollaborator {
+  user_id: string;
+}
+
 // Define the main Task interface for KanbanTask and other components receiving joined task data
 export interface FullTaskData { // Exported for use in other components like BoardClient, KanbanBoard, GanttBoard
   id: string;
@@ -49,6 +53,7 @@ export interface FullTaskData { // Exported for use in other components like Boa
   created_at: string; // Assuming created_at is always present in fetched tasks
   profiles: JoinedTaskProfile | null; // Profile of assigned_to
   clients: JoinedTaskClient | null;
+  task_collaborators: JoinedCollaborator[];
 }
 
 export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task: FullTaskData; index: number; onTaskUpdated?: () => void; onTaskDeleted?: (taskId: string) => void; }) {

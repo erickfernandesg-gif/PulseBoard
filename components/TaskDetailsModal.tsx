@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2, Maximize2, Minimize2, Edit2 } from "lucide-react";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2, Maximize2, Minimize2, Edit2, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
@@ -111,6 +111,24 @@ export function TaskDetailsModal({
     if (hours === 0) return `${mins}m`;
     if (mins === 0) return `${hours}h`;
     return `${hours}h ${mins}m`;
+  };
+
+  // Função Sênior: Calcula o próximo mês a partir do targetMonth atual ou hoje
+  const handlePostponeMonth = () => {
+    const current = targetMonth || new Date().toISOString().slice(0, 7);
+    const [year, month] = current.split('-').map(Number);
+    
+    let nextYear = year;
+    let nextMonth = month + 1;
+    
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear += 1;
+    }
+    
+    const nextMonthStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+    setTargetMonth(nextMonthStr);
+    toast.info(`Mês alvo alterado para ${nextMonthStr}. Lembre-se de salvar.`);
   };
 
   const totalTimeSpent = timeLogs.reduce((acc, log) => acc + log.minutes, 0);
@@ -466,12 +484,22 @@ const handleUpdateComment = async (commentId: string) => {
                     <label className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-2">
                       <CalendarDays size={12} /> Mês / Ciclo
                     </label>
-                    <input
-                      type="month"
-                      value={targetMonth}
-                      onChange={(e) => setTargetMonth(e.target.value)}
-                      className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-2.5 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="month"
+                        value={targetMonth}
+                        onChange={(e) => setTargetMonth(e.target.value)}
+                        className="flex-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-2.5 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
+                      />
+                      <button 
+                        type="button"
+                        onClick={handlePostponeMonth}
+                        className="px-3 bg-zinc-900 border border-zinc-800 rounded-lg text-emerald-500 hover:bg-zinc-800 transition-all shadow-sm"
+                        title="Adiar para o próximo mês"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className={cn(

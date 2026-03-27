@@ -15,15 +15,23 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
     async function fetchLogs() {
       setIsLoading(true);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      const isManager = profile?.role === "admin" || profile?.role === "manager";
+
       let query = supabase
         .from("activity_log")
         .select("*, profiles(full_name)")
         .order("created_at", { ascending: false })
         .limit(10);
 
-      // Se for passado um boardId, mostra apenas a atividade daquele quadro
-      if (boardId) {
-        query = query.eq("board_id", boardId);
+      if (boardId) query = query.eq("board_id", boardId);
+
+      // Lógica Sênior: Se não for gestor, filtra apenas o que lhe diz respeito
+      if (!isManager) {
+        query = query.eq("user_id", user.id);
       }
 
       const { data, error } = await query;

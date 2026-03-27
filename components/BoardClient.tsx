@@ -44,7 +44,7 @@ export function BoardClient({
       // QUERY CRÍTICA: Agora buscamos os perfis e os clientes associados!
       const { data, error } = await supabase
         .from("tasks")
-        .select("*, profiles(full_name, avatar_url), clients(name)")
+        .select("*, profiles(full_name, avatar_url), clients(name), task_collaborators(user_id)")
         .eq("board_id", board.id)
         .order("position_index", { ascending: true });
       

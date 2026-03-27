@@ -377,3 +377,24 @@ FOR UPDATE
 TO authenticated 
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+-- =======================================================================================
+-- 5. ROTINAS DE AUTOMAÇÃO TEMPORAL
+-- =======================================================================================
+
+-- Função para mover tarefas não concluídas para o mês atual
+CREATE OR REPLACE FUNCTION public.fn_rollover_unfinished_tasks()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER -- Roda com privilégios de admin para garantir a limpeza
+AS $$
+DECLARE
+    v_current_month TEXT := to_char(CURRENT_DATE, 'YYYY-MM');
+BEGIN
+    UPDATE public.tasks
+    SET target_month = v_current_month
+    WHERE status != 'done' 
+      AND target_month < v_current_month
+      AND target_month IS NOT NULL;
+END;
+$$;

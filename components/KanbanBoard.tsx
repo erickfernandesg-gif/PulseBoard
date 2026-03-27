@@ -5,24 +5,29 @@ import { DragDropContext } from "@hello-pangea/dnd";
 import { KanbanColumn } from "./KanbanColumn";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { Filter, Inbox, CalendarDays, Layers } from "lucide-react";
+import { Filter, Inbox, CalendarDays, Layers, User } from "lucide-react";
 import { FullTaskData } from "./KanbanTask"; // Import the shared Task type
 
 export function KanbanBoard({
   board,
   tasks,
   setTasks,
-  profiles,
+  profiles, // Lista de todos os membros do time
   onTaskUpdated,
   onTaskDeleted,
 }: any) {
   const [isMounted, setIsMounted] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [filterUserId, setFilterUserId] = useState<string>("all");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const supabase = createClient();
 
   // Evita erros de hidratação do Next.js
   useEffect(() => {
     setIsMounted(true);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
   }, []);
 
   // 1. Definição das Colunas (Agora com a Caixa de Entrada)
@@ -65,10 +70,14 @@ export function KanbanBoard({
 
   // 3. Aplica o filtro selecionado
   const filteredTasks = useMemo(() => {
-    if (selectedMonth === "all") return tasks;
-    if (selectedMonth === "inbox") return tasks.filter((t: FullTaskData) => !t.target_month); // Use FullTaskData
-    return tasks.filter((t: FullTaskData) => t.target_month === selectedMonth); // Use FullTaskData
-  }, [tasks, selectedMonth]);
+    return tasks.filter((t: FullTaskData) => {
+      const matchMonth = selectedMonth === "all" || (selectedMonth === "inbox" ? !t.target_month : t.target_month === selectedMonth);
+      
+      const isCollaborator = t.task_collaborators?.some((c) => c.user_id === filterUserId);
+      const matchUser = filterUserId === "all" || t.assigned_to === filterUserId || isCollaborator;
+      return matchMonth && matchUser;
+    });
+  }, [tasks, selectedMonth, filterUserId]);
 
   // 4. Lógica de arrastar e soltar
   const handleDragEnd = async (result: any) => {
@@ -111,7 +120,8 @@ export function KanbanBoard({
     <div className="flex flex-col h-full w-full bg-zinc-950/20">
       
       {/* BARRA DE FILTROS (A Mágica do SaaS) */}
-      <div className="flex items-center gap-2 px-6 py-3 border-b border-zinc-800/50 bg-zinc-900/30 overflow-x-auto custom-scrollbar">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800/50 bg-zinc-900/30">
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
         <span className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-1 mr-2">
           <Filter size={14} /> Visão:
         </span>
@@ -147,6 +157,29 @@ export function KanbanBoard({
             <CalendarDays size={14} /> {formatMonthLabel(month)}
           </button>
         ))}
+        </div>
+
+        {/* Filtro de Usuário (Lado Direito) */}
+        <div className="flex items-center gap-2 border-l border-zinc-800 pl-4 ml-4">
+          <button
+            onClick={() => setFilterUserId(currentUserId || "all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+              filterUserId === currentUserId ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40" : "bg-zinc-800 text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <User size={14} /> Ver apenas eu
+          </button>
+          <select 
+            value={filterUserId} 
+            onChange={(e) => setFilterUserId(e.target.value)}
+            className="bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-500"
+          >
+            <option value="all">Time Completo</option>
+            {profiles.map((p: any) => (
+              <option key={p.id} value={p.id}>{p.full_name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* QUADRO KANBAN */}
