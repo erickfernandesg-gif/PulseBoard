@@ -366,3 +366,14 @@ on public.boards for select
 to authenticated
 using (public.is_manager() or owner_id = auth.uid());
 commit;
+
+ALTER TABLE task_comments ENABLE ROW LEVEL SECURITY;
+
+-- 2. Criamos a política de UPDATE
+-- Ela diz: "Permita o UPDATE se o ID do usuário logado for igual ao user_id do comentário"
+CREATE POLICY "Users can update their own comments" 
+ON task_comments 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);

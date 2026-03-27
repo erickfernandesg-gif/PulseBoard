@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { KanbanBoard } from "./KanbanBoard";
 import { TableBoard } from "./TableBoard";
 import { GanttBoard } from "./GanttBoard";
@@ -31,11 +32,15 @@ export function BoardClient({
   const [tasks, setTasks] = useState<FullTaskData[]>(initialTasks); // State also uses the shared type
   const [isRefreshing, setIsRefreshing] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   // Função para recarregar as tarefas e garantir que os dados novos (clientes, datas, colaboradores) apareçam
   const refreshTasks = useCallback(async () => {
     setIsRefreshing(true);
     try {
+      // router.refresh() força o Next.js a buscar os Server Components novamente
+      router.refresh(); 
+      
       // QUERY CRÍTICA: Agora buscamos os perfis e os clientes associados!
       const { data, error } = await supabase
         .from("tasks")
@@ -51,7 +56,7 @@ export function BoardClient({
     } finally {
       setIsRefreshing(false);
     }
-  }, [board.id, supabase]);
+  }, [board.id, supabase, router]);
 
   const handleTaskCreated = (newTask: any) => {
     // Ao criar, recarregamos para pegar as relações (profiles, clients) corretamente do banco

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2, Maximize2, Minimize2, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
@@ -55,13 +57,20 @@ export function TaskDetailsModal({
   onTaskUpdated,
   onTaskDeleted,
 }: TaskDetailsModalProps) {
+  const router = useRouter();
   const supabase = createClient();
+  const [isMounted, setIsMounted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
   const [isSaving, setIsSaving] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [collaborators, setCollaborators] = useState<string[]>([]); // Armazena apenas IDs
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editedCommentContent, setEditedCommentContent] = useState("");
+  const [isSubmittingChat, setIsSubmittingChat] = useState(false);
   
   // Referência para o Auto-scroll do Chat
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -84,11 +93,16 @@ export function TaskDetailsModal({
   const [dueDate, setDueDate] = useState(initialTask.due_date ? initialTask.due_date.split("T")[0] : "");
   const [assignedTo, setAssignedTo] = useState(initialTask.assigned_to || "");
   const [status, setStatus] = useState(initialTask.status);
+  const [priority, setPriority] = useState(initialTask.priority || "medium");
   
   // Estados de Bloqueio e Mês
   const [isBlocked, setIsBlocked] = useState(initialTask.is_blocked || false);
   const [blockerReason, setBlockerReason] = useState(initialTask.blocker_reason || "");
   const [targetMonth, setTargetMonth] = useState(initialTask.target_month || "");
+
+  // Estados de Estimativa (Para paridade com CreateTaskModal)
+  const [estHours, setEstHours] = useState(initialTask.estimated_minutes ? Math.floor(initialTask.estimated_minutes / 60).toString() : "");
+  const [estMinutes, setEstMinutes] = useState(initialTask.estimated_minutes ? (initialTask.estimated_minutes % 60).toString() : "");
 
   // Função para formatar minutos em Horas e Minutos (ex: 150m -> 2h 30m)
   const formatMinutes = (totalMinutes: number) => {
@@ -140,8 +154,12 @@ export function TaskDetailsModal({
   }, [supabase, initialTask.id]);
 
   useEffect(() => {
+    setIsMounted(true);
     fetchData();
-  }, [fetchData]);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+  }, [fetchData, supabase.auth]);
 
   // UX de Sênior: Auto-scroll no chat quando abrir a aba ou chegar mensagem nova
   useEffect(() => {
@@ -169,6 +187,9 @@ export function TaskDetailsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Cálculo da Estimativa
+      const totalEstMinutes = (parseInt(estHours) || 0) * 60 + (parseInt(estMinutes) || 0);
+
       const { error: taskError } = await supabase
         .from("tasks")
         .update({
@@ -179,7 +200,9 @@ export function TaskDetailsModal({
           assigned_to: assignedTo || null,
           client_id: clientId || null, // Salva o vínculo do Cliente
           status,
+          priority,
           target_month: targetMonth || null,
+          estimated_minutes: totalEstMinutes,
           is_blocked: isBlocked,
           blocker_reason: isBlocked ? blockerReason : null,
         })
@@ -203,6 +226,58 @@ export function TaskDetailsModal({
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm("Deseja excluir permanentemente esta mensagem?")) return;
+
+    const { error } = await supabase.from("task_comments").delete().eq("id", commentId);
+
+    if (error) {
+      toast.error("Falha ao remover mensagem.");
+    } else {
+      toast.success("Mensagem removida com sucesso");
+      await fetchData(); // Recarrega o feed
+    }
+  };
+
+const handleUpdateComment = async (commentId: string) => {
+  const contentToSave = editedCommentContent.trim();
+  if (!contentToSave) {
+    toast.error("A mensagem não pode estar vazia.");
+    return;
+  }
+
+  setIsSubmittingChat(true);
+  try {
+    // Adicionamos .select() para confirmar se a linha foi realmente afetada
+    const { data, error } = await supabase
+      .from("task_comments")
+      .update({ content: contentToSave })
+      .eq("id", commentId)
+      .select(); 
+
+    if (error) throw error;
+
+    // Se o data vier vazio, o RLS bloqueou ou o ID está errado
+    if (!data || data.length === 0) {
+      console.error("Nenhuma linha atualizada. Verifique as políticas de RLS no Supabase.");
+      toast.error("Erro de permissão ao salvar.");
+      return;
+    }
+
+    setEditingCommentId(null);
+    setEditedCommentContent("");
+    toast.success("Mensagem atualizada!");
+    
+    await fetchData();
+    router.refresh();
+  } catch (error: any) {
+    console.error("Erro completo:", error);
+    toast.error(error.message || "Falha ao salvar alteração.");
+  } finally {
+    setIsSubmittingChat(false);
+  }
+};
+
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     const { data: { user } } = await supabase.auth.getUser();
@@ -216,7 +291,9 @@ export function TaskDetailsModal({
 
     if (!error) {
       setNewComment("");
-      fetchData();
+      await fetchData();
+      router.refresh();
+      if (onTaskUpdated) onTaskUpdated();
     }
   };
 
@@ -262,7 +339,8 @@ export function TaskDetailsModal({
       setInputHours("");
       setInputMinutes("");
       setTimeDescription("");
-      fetchData();
+      await fetchData();
+      router.refresh();
       if (onTaskUpdated) onTaskUpdated(); 
     }
     setIsSubmittingTime(false);
@@ -275,23 +353,42 @@ export function TaskDetailsModal({
     setInputMinutes(m > 0 ? m.toString() : "");
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/70 backdrop-blur-sm p-4">
+  if (!isMounted) return null;
+
+  return createPortal(
+    <div className={cn(
+      "fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md transition-all",
+      isFullscreen ? "p-0" : "p-2 md:p-6"
+    )}>
       <div className="absolute inset-0" onClick={onClose} />
       
-      <div className="relative h-full w-full max-w-lg bg-zinc-950 border border-zinc-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-right duration-300 rounded-l-2xl overflow-hidden">
+      <div className={cn(
+        "relative bg-zinc-950 border border-zinc-800 shadow-[0_20px_70px_rgba(0,0,0,0.7)] flex flex-col animate-in fade-in zoom-in-95 duration-300 overflow-hidden transition-all translate-z-0",
+        isFullscreen ? "w-screen h-screen rounded-none border-none" : "w-full max-w-5xl h-[92vh] rounded-2xl"
+      )}>
         
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-5 bg-zinc-900/30">
-          <input 
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 w-full p-0 placeholder-zinc-700 outline-none"
-            placeholder="Título da demanda..."
-          />
-          <button onClick={onClose} className="ml-4 p-2 text-zinc-500 hover:text-white transition-colors">
-            <X size={20} />
-          </button>
+        <div className="flex items-center justify-between border-b border-zinc-800 px-8 py-6 bg-zinc-900/40">
+          <div className="flex-1">
+            <input 
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 w-full p-0 placeholder-zinc-700 outline-none"
+              placeholder="Título da demanda..."
+            />
+          </div>
+          <div className="flex items-center gap-2 ml-4">
+            <button 
+              onClick={() => setIsFullscreen(!isFullscreen)} 
+              className="p-2 text-zinc-500 hover:text-indigo-400 transition-colors hidden md:block"
+              title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+            >
+              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+            </button>
+            <button onClick={onClose} className="p-2 text-zinc-500 hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -314,132 +411,14 @@ export function TaskDetailsModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-zinc-950">
           {activeTab === "details" ? (
-            <div className="space-y-8">
-              
-              {/* Cronograma de Duas Datas */}
-              <div className="grid grid-cols-2 gap-6 bg-zinc-900/20 p-4 rounded-xl border border-zinc-800/50">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                    <Calendar size={12} /> Início
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                    <Clock size={12} /> Prazo Final
-                  </label>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Status do Workflow E Mês de Planejamento */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold outline-none focus:border-indigo-500"
-                  >
-                    <option value="backlog">Caixa de Entrada</option>
-                    <option value="todo">Backlog (A Fazer)</option>
-                    <option value="in-progress">Desenvolvimento</option>
-                    <option value="homologation">Homologação</option>
-                    <option value="production">Produção</option>
-                    <option value="done">Concluído</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-2">
-                    <CalendarDays size={12} /> Mês de Planejamento
-                  </label>
-                  <input
-                    type="month"
-                    value={targetMonth}
-                    onChange={(e) => setTargetMonth(e.target.value)}
-                    className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* === MÓDULO DE IMPEDIMENTO (BLOCKER) === */}
-              <div className={cn(
-                "p-5 rounded-xl border transition-all duration-300",
-                isBlocked ? "bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.05)]" : "bg-zinc-900/20 border-zinc-800/50"
-              )}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "p-2.5 rounded-lg transition-colors",
-                      isBlocked ? "bg-red-500/20 text-red-500" : "bg-zinc-800 text-zinc-500"
-                    )}>
-                      <AlertOctagon size={18} />
-                    </div>
-                    <div>
-                      <h4 className={cn("text-sm font-bold transition-colors", isBlocked ? "text-red-400" : "text-zinc-400")}>
-                        {isBlocked ? "Tarefa com Impedimento" : "Sinalizar Bloqueio"}
-                      </h4>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">
-                        Alerta a equipe sobre dependências ou travamentos
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setIsBlocked(!isBlocked)}
-                    className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                      isBlocked ? "bg-red-500" : "bg-zinc-700"
-                    )}
-                  >
-                    <span className={cn(
-                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                      isBlocked ? "translate-x-5" : "translate-x-0"
-                    )} />
-                  </button>
-                </div>
-                
-                {isBlocked && (
-                  <div className="mt-5 pt-5 border-t border-red-500/20 animate-in fade-in slide-in-from-top-2">
-                    <label className="text-[10px] font-bold text-red-400 uppercase mb-2 block">Motivo do Bloqueio (O que falta para avançar?)</label>
-                    <textarea
-                      value={blockerReason}
-                      onChange={(e) => setBlockerReason(e.target.value)}
-                      placeholder="Ex: Aguardando senha de acesso da API do cliente..."
-                      className="w-full bg-red-950/30 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-200 outline-none focus:border-red-500 placeholder-red-800/50 min-h-[80px] resize-none"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Múltiplos Usuários E CLIENTE (Ajuste Estratégico) */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Responsável Principal</label>
-                  <select
-                    value={assignedTo}
-                    onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Não atribuído</option>
-                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                  </select>
-                </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* COLUNA 1: ESCOPO E IDENTIFICAÇÃO */}
+              <div className="space-y-6">
+                <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest border-b border-zinc-800 pb-3 flex items-center gap-2">
+                  <Building2 size={14} /> 1. Escopo e Identificação
+                </h3>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
                     <Building2 size={12} /> Cliente Vinculado
@@ -447,138 +426,194 @@ export function TaskDetailsModal({
                   <select
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500 transition-all"
                   >
                     <option value="">Interno / Sem Cliente</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                  <UserPlus size={12} /> Colaboradores Extras na Atividade
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {profiles.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => toggleCollaborator(p.id)}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
-                        collaborators.includes(p.id) 
-                        ? "bg-indigo-500/20 border-indigo-500 text-indigo-400" 
-                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                      }`}
-                    >
-                      {p.full_name}
-                    </button>
-                  ))}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Descrição da Demanda</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 text-sm text-zinc-200 min-h-[180px] outline-none focus:border-indigo-500 transition-all leading-relaxed shadow-inner"
+                    placeholder="Descreva o que deve ser feito..."
+                  />
                 </div>
-              </div>
-
-              {/* Descrição */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase">Escopo da Tarefa</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-300 min-h-[120px] outline-none focus:border-indigo-500/50"
-                  placeholder="Descreva o que deve ser feito ou os logs de erro..."
-                />
-              </div>
-
-              {/* SEÇÃO OTIMIZADA: Apontamento de Horas com Input Duplo */}
-              <div className="space-y-4 border-t border-zinc-800/50 pt-8 mt-6">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                    <Clock size={12} /> Apontamento de Horas
-                  </label>
-                  {totalTimeSpent > 0 && (
-                    <span className="text-xs font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full">
-                      Total: {formatMinutes(totalTimeSpent)}
-                    </span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs text-indigo-400 font-bold outline-none focus:border-indigo-500"
+                    >
+                      <option value="backlog">Caixa de Entrada</option>
+                      <option value="todo">Backlog (A Fazer)</option>
+                      <option value="in-progress">Desenvolvimento</option>
+                      <option value="homologation">Homologação</option>
+                      <option value="production">Produção</option>
+                      <option value="done">Concluído</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-2">
+                      <CalendarDays size={12} /> Mês / Ciclo
+                    </label>
+                    <input
+                      type="month"
+                      value={targetMonth}
+                      onChange={(e) => setTargetMonth(e.target.value)}
+                      className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-2.5 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className={cn(
+                  "p-5 rounded-xl border transition-all duration-300",
+                  isBlocked ? "bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.05)]" : "bg-zinc-900/20 border-zinc-800/50"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "p-2.5 rounded-lg transition-colors",
+                        isBlocked ? "bg-red-500/20 text-red-500" : "bg-zinc-800 text-zinc-500"
+                      )}>
+                        <AlertOctagon size={18} />
+                      </div>
+                      <div>
+                        <h4 className={cn("text-sm font-bold transition-colors", isBlocked ? "text-red-400" : "text-zinc-400")}>
+                          {isBlocked ? "Impedimento Ativo" : "Sinalizar Bloqueio"}
+                        </h4>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">Alerta a equipe sobre travamentos</p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setIsBlocked(!isBlocked)} className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out", isBlocked ? "bg-red-500" : "bg-zinc-700")}>
+                      <span className={cn("pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out", isBlocked ? "translate-x-5" : "translate-x-0")} />
+                    </button>
+                  </div>
+                  {isBlocked && (
+                    <div className="mt-5 pt-5 border-t border-red-500/20 animate-in fade-in slide-in-from-top-2">
+                      <label className="text-[10px] font-bold text-red-400 uppercase mb-2 block">Motivo do Bloqueio</label>
+                      <textarea value={blockerReason} onChange={(e) => setBlockerReason(e.target.value)} placeholder="O que falta para avançar?" className="w-full bg-red-950/30 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-200 outline-none focus:border-red-500 placeholder-red-800/50 min-h-[80px] resize-none" />
+                    </div>
                   )}
                 </div>
-                
-                {/* Botões de Quick Add (Fricção Zero) */}
-                <div className="flex gap-2">
-                  <span className="text-[10px] text-zinc-600 flex items-center mr-1"><Zap size={10} className="mr-1"/> Atalhos:</span>
-                  <button onClick={() => applyQuickTime(15)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">15m</button>
-                  <button onClick={() => applyQuickTime(30)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">30m</button>
-                  <button onClick={() => applyQuickTime(60)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">1h</button>
-                  <button onClick={() => applyQuickTime(120)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">2h</button>
-                </div>
-
-                {/* Formulário de Apontamento com UX Avançada */}
-                <div className="flex gap-2">
-                  <div className="flex gap-1">
-                    <div className="relative w-16">
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={inputHours}
-                        onChange={(e) => setInputHours(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
-                      />
-                      <span className="absolute right-2 top-2 text-xs text-zinc-600">h</span>
+              </div>
+              {/* COLUNA 2: EQUIPE E TEMPO */}
+              <div className="space-y-6">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-3 flex items-center gap-2">
+                  <Zap size={14} /> 2. Planejamento e Equipe
+                </h3>
+                <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/80">
+                  <label className="block text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <Clock size={12} /> Orçamento de Horas (Estimativa)
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative w-1/2">
+                      <input type="number" min="0" placeholder="0" value={estHours} onChange={(e) => setEstHours(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-3 pr-8 py-2.5 text-sm text-white outline-none focus:border-amber-500 transition-colors" />
+                      <span className="absolute right-3 top-2.5 text-sm text-zinc-600 font-bold">h</span>
                     </div>
-                    <div className="relative w-16">
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        placeholder="0"
-                        value={inputMinutes}
-                        onChange={(e) => setInputMinutes(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
-                      />
-                      <span className="absolute right-2 top-2 text-xs text-zinc-600">m</span>
+                    <div className="relative w-1/2">
+                      <input type="number" min="0" max="59" placeholder="0" value={estMinutes} onChange={(e) => setEstMinutes(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-3 pr-8 py-2.5 text-sm text-white outline-none focus:border-amber-500 transition-colors" />
+                      <span className="absolute right-3 top-2.5 text-sm text-zinc-600 font-bold">m</span>
                     </div>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="O que foi feito neste tempo?"
-                    value={timeDescription}
-                    onChange={(e) => setTimeDescription(e.target.value)}
-                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    onClick={handleAddTimeLog}
-                    disabled={isSubmittingTime || (!inputHours && !inputMinutes)}
-                    className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center"
-                  >
-                    {isSubmittingTime ? <Loader2 size={14} className="animate-spin" /> : "Registrar"}
-                  </button>
                 </div>
-
-                {/* Histórico de Horas */}
-                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2 mt-4">
-                  {timeLogs.map((log) => (
-                    <div key={log.id} className="flex justify-between items-center bg-zinc-900/30 p-3 rounded-lg border border-zinc-800/50">
-                      <div>
-                        <span className="text-xs font-bold text-indigo-400">{log.profiles?.full_name}</span>
-                        <p className="text-[10px] text-zinc-500 mt-1">{log.description || "Tempo registrado (sem descrição)"}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Calendar size={12} /> Início Previsto</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Clock size={12} /> Prazo de Entrega</label>
+                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Responsável Principal</label>
+                  <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500">
+                    <option value="">Não atribuído</option>
+                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2"><UserPlus size={12} /> Colaboradores Extras</label>
+                  <div className="flex flex-wrap gap-2 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/80 min-h-[60px] items-start transition-all">
+                    {profiles.map(p => (
+                      <button key={p.id} onClick={() => toggleCollaborator(p.id)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${collaborators.includes(p.id) ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 shadow-sm" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600"}`}>
+                        {p.full_name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-4 pt-4 border-t border-zinc-800/50">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                      <Clock size={12} /> Apontamento de Horas
+                    </label>
+                    {totalTimeSpent > 0 && (
+                      <span className="text-xs font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full">
+                        Total: {formatMinutes(totalTimeSpent)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-[10px] text-zinc-600 flex items-center mr-1"><Zap size={10} className="mr-1"/> Atalhos:</span>
+                    <button onClick={() => applyQuickTime(15)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">15m</button>
+                    <button onClick={() => applyQuickTime(30)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">30m</button>
+                    <button onClick={() => applyQuickTime(60)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">1h</button>
+                    <button onClick={() => applyQuickTime(120)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">2h</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex gap-1">
+                      <div className="relative w-16">
+                        <input
+                          type="number" min="0" placeholder="0" value={inputHours} onChange={(e) => setInputHours(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                        />
+                        <span className="absolute right-2 top-2 text-xs text-zinc-600">h</span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs font-bold text-white">{formatMinutes(log.minutes)}</span>
-                        <p className="text-[9px] text-zinc-600 mt-1">{format(new Date(log.log_date), "dd/MM/yy", { locale: ptBR })}</p>
+                      <div className="relative w-16">
+                        <input
+                          type="number" min="0" max="59" placeholder="0" value={inputMinutes} onChange={(e) => setInputMinutes(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                        />
+                        <span className="absolute right-2 top-2 text-xs text-zinc-600">m</span>
                       </div>
                     </div>
-                  ))}
-                  {timeLogs.length === 0 && (
-                    <div className="text-center py-6 text-xs text-zinc-600 border border-dashed border-zinc-800/50 rounded-lg bg-zinc-900/10">
-                      Nenhum tempo registrado para esta tarefa.
-                    </div>
-                  )}
+                    <input
+                      type="text" placeholder="O que foi feito?" value={timeDescription} onChange={(e) => setTimeDescription(e.target.value)}
+                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      onClick={handleAddTimeLog} disabled={isSubmittingTime || (!inputHours && !inputMinutes)}
+                      className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center"
+                    >
+                      {isSubmittingTime ? <Loader2 size={14} className="animate-spin" /> : "Registrar"}
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2 mt-4">
+                    {timeLogs.map((log) => (
+                      <div key={log.id} className="flex justify-between items-center bg-zinc-900/30 p-3 rounded-lg border border-zinc-800/50">
+                        <div>
+                          <span className="text-xs font-bold text-indigo-400">{log.profiles?.full_name}</span>
+                          <p className="text-[10px] text-zinc-500 mt-1">{log.description || "Tempo registrado"}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-white">{formatMinutes(log.minutes)}</span>
+                          <p className="text-[9px] text-zinc-600 mt-1">{format(new Date(log.log_date), "dd/MM/yy", { locale: ptBR })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-
             </div>
           ) : (
             <div className="flex flex-col h-full space-y-6">
               {/* Feed de Comentários */}
-              <div className="flex-1 space-y-4 pb-16">
+              <div className="flex-1 space-y-4 pb-28">
                 {comments.length === 0 && (
                   <div className="text-center py-10">
                     <MessageSquare size={40} className="mx-auto text-zinc-800 mb-2" />
@@ -587,12 +622,68 @@ export function TaskDetailsModal({
                 )}
                 {/* As mensagens são renderizadas de baixo pra cima no array */}
                 {[...comments].reverse().map((c) => (
-                  <div key={c.id} className="bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-xl space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-indigo-400 uppercase">{c.profiles?.full_name}</span>
-                      <span className="text-[9px] text-zinc-600">{format(new Date(c.created_at), "HH:mm - dd/MM", { locale: ptBR })}</span>
+                  <div key={c.id} className="group/comment bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-xl space-y-2 relative transition-all hover:border-zinc-700/50">
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-indigo-400 uppercase">{c.profiles?.full_name}</span>
+                        <span className="text-[9px] text-zinc-600">{format(new Date(c.created_at), "HH:mm - dd/MM", { locale: ptBR })}</span>
+                      </div>
+                      
+                      {/* Botões de Ação (Apenas para o dono da mensagem) */}
+                      {c.user_id === currentUserId && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-all">
+                          <button
+                            onClick={() => {
+                              setEditingCommentId(c.id);
+                              setEditedCommentContent(c.content);
+                            }}
+                            className="p-1.5 text-zinc-600 hover:text-indigo-400 rounded-md hover:bg-indigo-500/5"
+                            title="Editar mensagem"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(c.id)}
+                            className="p-1.5 text-zinc-600 hover:text-red-400 transition-all rounded-md hover:bg-red-500/5"
+                            title="Excluir mensagem"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-zinc-300 leading-relaxed">{c.content}</p>
+                    
+                    {editingCommentId === c.id ? (
+                      <div className="space-y-3 mt-2">
+                        <textarea
+                          value={editedCommentContent}
+                          onChange={(e) => setEditedCommentContent(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-500 resize-none"
+                          rows={3}
+                        />
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button
+                            type="button"
+                            disabled={isSubmittingChat}
+                            onClick={() => setEditingCommentId(null)}
+                            className="px-3 py-1.5 text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-50"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSubmittingChat}
+                            onClick={() => handleUpdateComment(c.id)}
+                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-[10px] font-bold transition-all disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {isSubmittingChat && <Loader2 size={12} className="animate-spin" />}
+                            {isSubmittingChat ? "Salvando..." : "Confirmar Alteração"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-zinc-300 leading-relaxed">{c.content}</p>
+                    )}
                   </div>
                 ))}
                 {/* Elemento invisível para forçar o scroll até o final do chat */}
@@ -600,8 +691,8 @@ export function TaskDetailsModal({
               </div>
 
               {/* Input de Chat */}
-              <div className="absolute bottom-0 left-0 right-0 bg-zinc-950 p-6 border-t border-zinc-800">
-                <div className="relative">
+              <div className="sticky bottom-[-40px] left-0 right-0 bg-zinc-950 p-6 border-t border-zinc-800 -mx-10 z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+                <div className="relative max-w-5xl mx-auto">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
@@ -639,6 +730,7 @@ export function TaskDetailsModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
