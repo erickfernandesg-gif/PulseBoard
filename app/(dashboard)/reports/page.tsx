@@ -72,11 +72,43 @@ export default function ReportsPage() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
 
+  // Helpers de Precisão Financeira (Mesma lógica do Executive Dashboard)
+  const normId = (v: any) => (v === null || v === undefined ? "" : String(v));
+
+  const toRateNumber = (v: any) => {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+    const s = String(v).trim();
+    if (!s) return 0;
+    const normalized = s.replace(/\./g, "").replace(",", ".");
+    const n = Number.parseFloat(normalized);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const toMinutesNumber = (v: any) => {
+    if (v === null || v === undefined) return 0;
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // --- MOTOR DE REGRAS BI (Com Cruzamento Relacional e Financeiro) ---
   const processReportData = () => {
+    // 0. Preparação de Dicionários (Lookups) para Alta Performance O(1)
+    const ratesMap = new Map<string, number>(
+      userRates.map((r) => [normId(r.user_id), toRateNumber(r.hourly_rate)])
+    );
+
+    const taskMap = new Map<string, any>(
+      tasks.map((t) => [normId(t.id), t])
+    );
+
     let filteredTasks = tasks;
 
-    // 1. Aplica o Filtro de Mês
+    // 1. Filtros de Escopo
+    if (selectedUser) {
+      filteredTasks = filteredTasks.filter(task => normId(task.assigned_to) === selectedUser);
+    }
+
     if (selectedMonth) {
       filteredTasks = filteredTasks.filter(task => {
         if (!task.created_at) return false;
@@ -84,20 +116,14 @@ export default function ReportsPage() {
       });
     }
 
-    // 2. Aplica o Filtro de Equipe
     if (selectedTeam) {
       const usersInThisTeam = profiles
         .filter(profile => profile.team_id === selectedTeam)
         .map(profile => profile.id);
 
       filteredTasks = filteredTasks.filter(task => 
-        task.assigned_to && usersInThisTeam.includes(task.assigned_to)
+        task.assigned_to && usersInThisTeam.includes(normId(task.assigned_to))
       );
-    }
-
-    // 3. Aplica o Filtro de Pessoa (Individual)
-    if (selectedUser) {
-      filteredTasks = filteredTasks.filter(task => task.assigned_to === selectedUser);
     }
 
     const reportData = boards.map((board) => {
@@ -114,15 +140,27 @@ export default function ReportsPage() {
       let totalMinutes = 0;
       let totalCost = 0;
 
-      const boardTimeLogs = timeLogs.filter(log => boardTaskIds.includes(log.task_id));
+      const boardTimeLogs = timeLogs.filter(log => boardTaskIds.includes(normId(log.task_id)));
       
       boardTimeLogs.forEach(log => {
-        totalMinutes += log.minutes;
-        const userRateInfo = userRates.find(r => r.user_id === log.user_id);
-        const hourlyRate = userRateInfo ? Number(userRateInfo.hourly_rate) : 0;
+        const minutes = toMinutesNumber(log.minutes);
+        const taskId = normId(log.task_id);
+        const taskInfo = taskMap.get(taskId);
+
+        // 🔴 A REGRA SÊNIOR: Custo segue o dono da entrega (assigned_to)
+        const assignedId = normId(taskInfo?.assigned_to);
+        const logUserId = normId(log.user_id);
+        const workerId = assignedId || logUserId;
+
+        let userRate = workerId ? ratesMap.get(workerId) ?? 0 : 0;
+
+        // Fallback para quem logou caso o responsável não tenha taxa cadastrada
+        if ((userRate === undefined || userRate === 0) && logUserId) {
+          userRate = ratesMap.get(logUserId) ?? 0;
+        }
         
-        // Regra de Negócio: (Minutos / 60) * Valor da Hora = Custo do Apontamento
-        totalCost += (log.minutes / 60) * hourlyRate;
+        totalMinutes += minutes;
+        totalCost += (minutes / 60) * userRate;
       });
 
       // Status Visual da Operação

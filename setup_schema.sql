@@ -261,3 +261,108 @@ ALTER TABLE tasks ADD COLUMN client_id UUID REFERENCES clients(id) ON DELETE SET
 
 -- Adiciona a coluna de tempo estimado (em minutos, para manter o padrão)
 ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER DEFAULT 0;
+
+drop policy if exists "Todos podem ver equipes" on public.teams;
+drop policy if exists "Gestores gerenciam equipes" on public.teams;
+
+drop policy if exists "Perfis: self ou gestor" on public.profiles;
+
+drop policy if exists "Apenas gestores veem taxas" on public.user_rates;
+drop policy if exists "Apenas gestores editam taxas" on public.user_rates;
+
+drop policy if exists "Gestores veem e editam tudo de horas" on public.time_logs;
+drop policy if exists "Usuário vê apenas as próprias horas" on public.time_logs;
+drop policy if exists "Usuário insere as próprias horas" on public.time_logs;
+drop policy if exists "Usuário edita as próprias horas" on public.time_logs;
+drop policy if exists "Usuário deleta as próprias horas" on public.time_logs;
+
+drop policy if exists "Gestores veem todas as tarefas" on public.tasks;
+drop policy if exists "Gestores veem todos os quadros" on public.boards;
+
+-- Função base (a sua)
+create or replace function public.is_manager()
+returns boolean
+language plpgsql
+security definer
+as $$
+begin
+  return exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role in ('admin','manager')
+  );
+end;
+$$;
+
+-- (re)habilita RLS (não mexe em dados)
+alter table public.teams enable row level security;
+alter table public.profiles enable row level security;
+alter table public.user_rates enable row level security;
+alter table public.boards enable row level security;
+alter table public.tasks enable row level security;
+alter table public.time_logs enable row level security;
+
+-- Teams
+create policy "Todos podem ver equipes"
+on public.teams for select
+using (true);
+
+create policy "Gestores gerenciam equipes"
+on public.teams for all
+using (public.is_manager())
+with check (public.is_manager());
+
+-- Profiles (recomendado: user vê o próprio + gestor vê todos)
+create policy "Perfis: self ou gestor"
+on public.profiles for select
+to authenticated
+using (auth.uid() = id or public.is_manager());
+
+-- User Rates
+create policy "Apenas gestores veem taxas"
+on public.user_rates for select
+using (public.is_manager());
+
+create policy "Apenas gestores editam taxas"
+on public.user_rates for all
+using (public.is_manager())
+with check (public.is_manager());
+
+-- Time Logs (gestor vê tudo, user vê os seus)
+create policy "Gestores veem e editam tudo de horas"
+on public.time_logs for all
+using (public.is_manager())
+with check (public.is_manager());
+
+create policy "Usuário vê apenas as próprias horas"
+on public.time_logs for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Usuário insere as próprias horas"
+on public.time_logs for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Usuário edita as próprias horas"
+on public.time_logs for update
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Usuário deleta as próprias horas"
+on public.time_logs for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- Tasks / Boards (visão macro do gestor)
+create policy "Gestores veem todas as tarefas"
+on public.tasks for select
+to authenticated
+using (public.is_manager() or assigned_to = auth.uid());
+
+create policy "Gestores veem todos os quadros"
+on public.boards for select
+to authenticated
+using (public.is_manager() or owner_id = auth.uid());
+commit;
