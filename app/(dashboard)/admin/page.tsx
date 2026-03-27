@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Users, Shield, Plus, Edit2, Trash2, Building2, Loader2, DollarSign, AlertTriangle, Key, CheckCircle2 } from "lucide-react";
+import { Users, Shield, Plus, Edit2, Trash2, Building2, Loader2, DollarSign, AlertTriangle, Key, CheckCircle2, Briefcase } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -13,13 +13,16 @@ export default function AdminPage() {
   
   const isCreatingLock = useRef(false);
 
-  const [activeTab, setActiveTab] = useState<"users" | "teams">("users");
+  // NOVO: Adicionado 'clients' ao tipo do ActiveTab
+  const [activeTab, setActiveTab] = useState<"users" | "teams" | "clients">("users");
   const [isLoading, setIsLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
   const [users, setUsers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [userRates, setUserRates] = useState<any[]>([]);
+  // NOVO: Estado para armazenar os clientes
+  const [clients, setClients] = useState<any[]>([]);
 
   // Modais de Controle
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -30,8 +33,15 @@ export default function AdminPage() {
 
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  // NOVO: Modais e Estados para Clientes
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<any>(null);
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   
-  // MODAL DE SUCESSO (Feature Nova)
+  // MODAL DE SUCESSO
   const [successModal, setSuccessModal] = useState({ isOpen: false, title: "", message: "" });
 
   const [teamName, setTeamName] = useState("");
@@ -62,15 +72,18 @@ export default function AdminPage() {
       return;
     }
 
-    const [profRes, teamsRes, ratesRes] = await Promise.all([
+    // NOVO: Buscando também os clientes cadastrados
+    const [profRes, teamsRes, ratesRes, clientsRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, role, team_id").order("full_name"),
       supabase.from("teams").select("*").order("name"),
-      supabase.from("user_rates").select("*")
+      supabase.from("user_rates").select("*"),
+      supabase.from("clients").select("*").order("name")
     ]);
 
     if (profRes.data) setUsers(profRes.data);
     if (teamsRes.data) setTeams(teamsRes.data);
     if (ratesRes.data) setUserRates(ratesRes.data);
+    if (clientsRes.data) setClients(clientsRes.data);
     
     setIsLoading(false);
   }, [supabase, router]);
@@ -108,7 +121,6 @@ export default function AdminPage() {
         setNewUserTeam("");
         await fetchData(); 
         
-        // Abre o Modal de Sucesso
         setSuccessModal({
           isOpen: true,
           title: "Cadastro Concluído!",
@@ -125,7 +137,7 @@ export default function AdminPage() {
     }
   };
 
-  // --- Edição de Usuário (Agora usa Server Action) ---
+  // --- Edição de Usuário ---
   const openUserModal = (user: any) => {
     const rate = userRates.find(r => r.user_id === user.id)?.hourly_rate || 0;
     setEditingUser(user);
@@ -138,7 +150,6 @@ export default function AdminPage() {
 
   const handleSaveUser = async () => {
     try {
-      // Usando a chave mestra (Server Action) para editar!
       const result = await updateEmployee(editingUser.id, {
         full_name: userFullName,
         role: userRole,
@@ -150,7 +161,6 @@ export default function AdminPage() {
         setIsUserModalOpen(false);
         await fetchData();
         
-        // Abre o Modal de Sucesso
         setSuccessModal({
           isOpen: true,
           title: "Atualização Concluída!",
@@ -210,6 +220,53 @@ export default function AdminPage() {
     } catch (error: any) { toast.error("Erro ao excluir equipe."); }
   };
 
+  // --- NOVO: Gestão de Clientes ---
+  const openClientModal = (client: any = null) => {
+    if (client) {
+      setEditingClient(client);
+      setClientName(client.name);
+      setClientEmail(client.email || "");
+      setClientPhone(client.phone || "");
+    } else {
+      setEditingClient(null);
+      setClientName("");
+      setClientEmail("");
+      setClientPhone("");
+    }
+    setIsClientModalOpen(true);
+  };
+
+  const handleSaveClient = async () => {
+    if (!clientName.trim()) return toast.error("Nome do cliente é obrigatório");
+    
+    const payload = { name: clientName, email: clientEmail, phone: clientPhone };
+    
+    try {
+      if (editingClient) {
+        await supabase.from("clients").update(payload).eq("id", editingClient.id);
+        toast.success("Cliente atualizado!");
+      } else {
+        await supabase.from("clients").insert([payload]);
+        toast.success("Cliente cadastrado!");
+      }
+      setIsClientModalOpen(false);
+      fetchData();
+    } catch (error: any) {
+      toast.error("Erro ao salvar cliente.");
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (!window.confirm("Excluir este cliente? Tarefas associadas perderão o vínculo.")) return;
+    try {
+      await supabase.from("clients").delete().eq("id", id);
+      toast.success("Cliente excluído!");
+      fetchData();
+    } catch (error: any) {
+      toast.error("Erro ao excluir cliente.");
+    }
+  };
+
   if (accessDenied) {
     return (
       <div className="mx-auto max-w-7xl flex flex-col items-center justify-center min-h-[60vh]">
@@ -227,16 +284,20 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             <Shield className="text-indigo-500" /> Administração e Configurações
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">Governança corporativa, gestão de equipes e controle financeiro (RH).</p>
+          <p className="text-sm text-zinc-400 mt-1">Governança corporativa, gestão de equipes, clientes e controle financeiro.</p>
         </div>
       </div>
 
-      <div className="flex border-b border-zinc-800 mb-6">
-        <button onClick={() => setActiveTab("users")} className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === "users" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+      {/* ABAS DE NAVEGAÇÃO ATUALIZADAS */}
+      <div className="flex border-b border-zinc-800 mb-6 overflow-x-auto custom-scrollbar">
+        <button onClick={() => setActiveTab("users")} className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === "users" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
           <div className="flex items-center gap-2"><Users size={16} /> Usuários do Sistema</div>
         </button>
-        <button onClick={() => setActiveTab("teams")} className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === "teams" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
-          <div className="flex items-center gap-2"><Building2 size={16} /> Gestão de Equipes</div>
+        <button onClick={() => setActiveTab("teams")} className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === "teams" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+          <div className="flex items-center gap-2"><Building2 size={16} /> Departamentos</div>
+        </button>
+        <button onClick={() => setActiveTab("clients")} className={`px-6 py-3 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === "clients" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+          <div className="flex items-center gap-2"><Briefcase size={16} /> Clientes Externos</div>
         </button>
       </div>
 
@@ -244,6 +305,7 @@ export default function AdminPage() {
         <div className="flex justify-center items-center py-20"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>
       ) : (
         <>
+          {/* TAB: USUÁRIOS */}
           {activeTab === "users" && (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
@@ -302,6 +364,7 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* TAB: TEAMS */}
           {activeTab === "teams" && (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
@@ -329,11 +392,55 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* NOVO - TAB: CLIENTES */}
+          {activeTab === "clients" && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-zinc-900/50 border border-zinc-800 p-6 rounded-xl">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Carteira de Clientes</h2>
+                  <p className="text-sm text-zinc-400 mt-1">Gerencie as empresas vinculadas aos seus projetos.</p>
+                </div>
+                <button 
+                  onClick={() => openClientModal()} 
+                  className="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
+                >
+                  <Plus size={16} /> Novo Cliente
+                </button>
+              </div>
+
+              {clients.length === 0 ? (
+                <div className="text-center py-20 bg-zinc-900/30 border border-dashed border-zinc-800 rounded-xl">
+                  <Briefcase size={40} className="mx-auto text-zinc-700 mb-3" />
+                  <p className="text-zinc-500 font-medium">Nenhum cliente cadastrado.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {clients.map(client => (
+                    <div key={client.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-colors flex flex-col">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                          <Briefcase size={20} />
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => openClientModal(client)} className="p-1.5 text-zinc-500 hover:text-indigo-400 bg-zinc-900 rounded-md transition-colors"><Edit2 size={14} /></button>
+                          <button onClick={() => handleDeleteClient(client.id)} className="p-1.5 text-zinc-500 hover:text-red-400 bg-zinc-900 rounded-md transition-colors"><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1 truncate">{client.name}</h3>
+                      <p className="text-sm text-zinc-400 truncate mb-1">{client.email || "E-mail não informado"}</p>
+                      <p className="text-sm text-zinc-500 font-mono">{client.phone || "Telefone não informado"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
       {/* =========================================
-          MODAL DE SUCESSO (Criação e Edição)
+          MODAL DE SUCESSO E AVISOS
           ========================================= */}
       {successModal.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -353,6 +460,10 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* =========================================
+          MODAIS DE FORMULÁRIOS
+          ========================================= */}
+      {/* Modal Criar Colaborador */}
       {isCreateUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="absolute inset-0" onClick={() => setIsCreateUserModalOpen(false)} />
@@ -375,6 +486,7 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Modal Editar Colaborador */}
       {isUserModalOpen && editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="absolute inset-0" onClick={() => setIsUserModalOpen(false)} />
@@ -394,6 +506,7 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Modal Departamentos */}
       {isTeamModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="absolute inset-0" onClick={() => setIsTeamModalOpen(false)} />
@@ -406,6 +519,37 @@ export default function AdminPage() {
             <div className="mt-8 flex gap-3 justify-end border-t border-zinc-800 pt-6">
               <button onClick={() => setIsTeamModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors">Cancelar</button>
               <button onClick={handleSaveTeam} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors">Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOVO: Modal Clientes */}
+      {isClientModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setIsClientModalOpen(false)} />
+          <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-2xl zoom-in-95">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Briefcase className="text-indigo-500" size={20} />
+              {editingClient ? "Editar Cliente" : "Cadastrar Cliente"}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase mb-2 block">Nome da Empresa / Cliente</label>
+                <input type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Ex: Acme Corp" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase mb-2 block">E-mail de Contato</label>
+                <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="contato@empresa.com" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase mb-2 block">Telefone</label>
+                <input type="text" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="(11) 90000-0000" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-indigo-500" />
+              </div>
+            </div>
+            <div className="mt-8 flex gap-3 justify-end border-t border-zinc-800 pt-6">
+              <button onClick={() => setIsClientModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+              <button onClick={handleSaveClient} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors">Salvar Dados</button>
             </div>
           </div>
         </div>

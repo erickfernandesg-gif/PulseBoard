@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
@@ -28,10 +28,18 @@ export function TaskDetailsModal({
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [collaborators, setCollaborators] = useState<any[]>([]);
+  
+  // Referência para o Auto-scroll do Chat
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Estados de Apontamento de Horas (Time Tracking)
+  // Estados de Clientes (NOVO)
+  const [clients, setClients] = useState<any[]>([]);
+  const [clientId, setClientId] = useState(task.client_id || "");
+
+  // Estados de Apontamento de Horas (ATUALIZADO PARA H E M)
   const [timeLogs, setTimeLogs] = useState<any[]>([]);
-  const [newMinutes, setNewMinutes] = useState("");
+  const [inputHours, setInputHours] = useState("");
+  const [inputMinutes, setInputMinutes] = useState("");
   const [timeDescription, setTimeDescription] = useState("");
   const [isSubmittingTime, setIsSubmittingTime] = useState(false);
 
@@ -42,11 +50,10 @@ export function TaskDetailsModal({
   const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split("T")[0] : "");
   const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
   const [status, setStatus] = useState(task.status);
-  // Estados de Bloqueio
+  
+  // Estados de Bloqueio e Mês
   const [isBlocked, setIsBlocked] = useState(task.is_blocked || false);
   const [blockerReason, setBlockerReason] = useState(task.blocker_reason || "");
-  
-  // NOVO ESTADO: Mês de Planejamento (Ciclo)
   const [targetMonth, setTargetMonth] = useState(task.target_month || "");
 
   // Função para formatar minutos em Horas e Minutos (ex: 150m -> 2h 30m)
@@ -62,7 +69,7 @@ export function TaskDetailsModal({
 
   // Carregar dados iniciais
   const fetchData = useCallback(async () => {
-    const [profRes, commRes, collRes, timeRes] = await Promise.all([
+    const [profRes, commRes, collRes, timeRes, clientsRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name"),
       supabase.from("task_comments")
         .select("*, profiles(full_name)")
@@ -74,18 +81,27 @@ export function TaskDetailsModal({
       supabase.from("time_logs")
         .select("*, profiles(full_name)")
         .eq("task_id", task.id)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false }),
+      supabase.from("clients").select("id, name").order("name") // Busca os Clientes
     ]);
 
     if (profRes.data) setProfiles(profRes.data);
     if (commRes.data) setComments(commRes.data);
     if (collRes.data) setCollaborators(collRes.data.map(c => c.user_id));
     if (timeRes.data) setTimeLogs(timeRes.data);
+    if (clientsRes.data) setClients(clientsRes.data);
   }, [supabase, task.id]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // UX de Sênior: Auto-scroll no chat quando abrir a aba ou chegar mensagem nova
+  useEffect(() => {
+    if (activeTab === "activity") {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [comments, activeTab]);
 
   const handleDelete = async () => {
     if (!window.confirm("Tem certeza que deseja excluir esta tarefa? O histórico será perdido.")) return;
@@ -114,8 +130,9 @@ export function TaskDetailsModal({
           start_date: startDate || null,
           due_date: dueDate || null,
           assigned_to: assignedTo || null,
+          client_id: clientId || null, // Salva o vínculo do Cliente
           status,
-          target_month: targetMonth || null, // Salva o mês de planejamento
+          target_month: targetMonth || null,
           is_blocked: isBlocked,
           blocker_reason: isBlocked ? blockerReason : null,
         })
@@ -162,9 +179,14 @@ export function TaskDetailsModal({
     );
   };
 
+  // Lógica OTIMIZADA para salvar horas e minutos
   const handleAddTimeLog = async () => {
-    if (!newMinutes || isNaN(Number(newMinutes)) || Number(newMinutes) <= 0) {
-      toast.error("Insira uma quantidade válida de minutos.");
+    const hrs = parseInt(inputHours) || 0;
+    const mins = parseInt(inputMinutes) || 0;
+    const totalMinutesToSave = (hrs * 60) + mins;
+
+    if (totalMinutesToSave <= 0) {
+      toast.error("Insira uma quantidade válida de tempo.");
       return;
     }
     
@@ -180,7 +202,7 @@ export function TaskDetailsModal({
     const { error } = await supabase.from("time_logs").insert({
       task_id: task.id,
       user_id: user.id,
-      minutes: Number(newMinutes),
+      minutes: totalMinutesToSave, // O BD salva em minutos totais para os relatórios funcionarem
       description: timeDescription,
       log_date: new Date().toISOString().split('T')[0]
     });
@@ -189,8 +211,9 @@ export function TaskDetailsModal({
       toast.error("Erro ao registrar horas. Verifique as permissões.");
       console.error(error);
     } else {
-      toast.success("Horas registradas com sucesso!");
-      setNewMinutes("");
+      toast.success("Tempo registrado com sucesso!");
+      setInputHours("");
+      setInputMinutes("");
       setTimeDescription("");
       fetchData();
       if (onTaskUpdated) onTaskUpdated(); 
@@ -198,8 +221,11 @@ export function TaskDetailsModal({
     setIsSubmittingTime(false);
   };
 
-  const applyQuickTime = (mins: string) => {
-    setNewMinutes(mins);
+  const applyQuickTime = (totalMins: number) => {
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    setInputHours(h > 0 ? h.toString() : "");
+    setInputMinutes(m > 0 ? m.toString() : "");
   };
 
   return (
@@ -221,7 +247,7 @@ export function TaskDetailsModal({
           </button>
         </div>
 
-        {/* Tabs Estilo Terminal */}
+        {/* Tabs */}
         <div className="flex bg-zinc-900/50 border-b border-zinc-800 px-6">
           <button
             onClick={() => setActiveTab("details")}
@@ -301,7 +327,8 @@ export function TaskDetailsModal({
                   />
                 </div>
               </div>
-{/* === MÓDULO DE IMPEDIMENTO (BLOCKER) === */}
+
+              {/* === MÓDULO DE IMPEDIMENTO (BLOCKER) === */}
               <div className={cn(
                 "p-5 rounded-xl border transition-all duration-300",
                 isBlocked ? "bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.05)]" : "bg-zinc-900/20 border-zinc-800/50"
@@ -324,7 +351,6 @@ export function TaskDetailsModal({
                     </div>
                   </div>
                   
-                  {/* Toggle Switch */}
                   <button
                     type="button"
                     onClick={() => setIsBlocked(!isBlocked)}
@@ -352,8 +378,9 @@ export function TaskDetailsModal({
                   </div>
                 )}
               </div>
-              {/* Múltiplos Usuários */}
-              <div className="space-y-4">
+
+              {/* Múltiplos Usuários E CLIENTE (Ajuste Estratégico) */}
+              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Responsável Principal</label>
                   <select
@@ -368,23 +395,37 @@ export function TaskDetailsModal({
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
-                    <UserPlus size={12} /> Colaboradores da Atividade
+                    <Building2 size={12} /> Cliente Vinculado
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    {profiles.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => toggleCollaborator(p.id)}
-                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
-                          collaborators.includes(p.id) 
-                          ? "bg-indigo-500/20 border-indigo-500 text-indigo-400" 
-                          : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                        }`}
-                      >
-                        {p.full_name}
-                      </button>
-                    ))}
-                  </div>
+                  <select
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-indigo-500"
+                  >
+                    <option value="">Interno / Sem Cliente</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                  <UserPlus size={12} /> Colaboradores Extras na Atividade
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {profiles.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => toggleCollaborator(p.id)}
+                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
+                        collaborators.includes(p.id) 
+                        ? "bg-indigo-500/20 border-indigo-500 text-indigo-400" 
+                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
+                      }`}
+                    >
+                      {p.full_name}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -399,7 +440,7 @@ export function TaskDetailsModal({
                 />
               </div>
 
-              {/* SEÇÃO OTIMIZADA: Apontamento de Horas */}
+              {/* SEÇÃO OTIMIZADA: Apontamento de Horas com Input Duplo */}
               <div className="space-y-4 border-t border-zinc-800/50 pt-8 mt-6">
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
@@ -415,23 +456,38 @@ export function TaskDetailsModal({
                 {/* Botões de Quick Add (Fricção Zero) */}
                 <div className="flex gap-2">
                   <span className="text-[10px] text-zinc-600 flex items-center mr-1"><Zap size={10} className="mr-1"/> Atalhos:</span>
-                  <button onClick={() => applyQuickTime("15")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">15m</button>
-                  <button onClick={() => applyQuickTime("30")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">30m</button>
-                  <button onClick={() => applyQuickTime("60")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">1h</button>
-                  <button onClick={() => applyQuickTime("120")} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">2h</button>
+                  <button onClick={() => applyQuickTime(15)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">15m</button>
+                  <button onClick={() => applyQuickTime(30)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">30m</button>
+                  <button onClick={() => applyQuickTime(60)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">1h</button>
+                  <button onClick={() => applyQuickTime(120)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">2h</button>
                 </div>
 
-                {/* Formulário de Apontamento */}
+                {/* Formulário de Apontamento com UX Avançada */}
                 <div className="flex gap-2">
-                  <div className="relative w-24">
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      value={newMinutes}
-                      onChange={(e) => setNewMinutes(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-3 pr-8 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
-                    />
-                    <span className="absolute right-3 top-2 text-xs text-zinc-600">m</span>
+                  <div className="flex gap-1">
+                    <div className="relative w-16">
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={inputHours}
+                        onChange={(e) => setInputHours(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                      />
+                      <span className="absolute right-2 top-2 text-xs text-zinc-600">h</span>
+                    </div>
+                    <div className="relative w-16">
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        placeholder="0"
+                        value={inputMinutes}
+                        onChange={(e) => setInputMinutes(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                      />
+                      <span className="absolute right-2 top-2 text-xs text-zinc-600">m</span>
+                    </div>
                   </div>
                   <input
                     type="text"
@@ -442,7 +498,7 @@ export function TaskDetailsModal({
                   />
                   <button
                     onClick={handleAddTimeLog}
-                    disabled={isSubmittingTime || !newMinutes}
+                    disabled={isSubmittingTime || (!inputHours && !inputMinutes)}
                     className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center"
                   >
                     {isSubmittingTime ? <Loader2 size={14} className="animate-spin" /> : "Registrar"}
@@ -475,14 +531,15 @@ export function TaskDetailsModal({
           ) : (
             <div className="flex flex-col h-full space-y-6">
               {/* Feed de Comentários */}
-              <div className="flex-1 space-y-4">
+              <div className="flex-1 space-y-4 pb-16">
                 {comments.length === 0 && (
                   <div className="text-center py-10">
                     <MessageSquare size={40} className="mx-auto text-zinc-800 mb-2" />
                     <p className="text-xs text-zinc-600 uppercase font-bold">Sem registros de atividade</p>
                   </div>
                 )}
-                {comments.map((c) => (
+                {/* As mensagens são renderizadas de baixo pra cima no array */}
+                {[...comments].reverse().map((c) => (
                   <div key={c.id} className="bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-xl space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-bold text-indigo-400 uppercase">{c.profiles?.full_name}</span>
@@ -491,10 +548,12 @@ export function TaskDetailsModal({
                     <p className="text-sm text-zinc-300 leading-relaxed">{c.content}</p>
                   </div>
                 ))}
+                {/* Elemento invisível para forçar o scroll até o final do chat */}
+                <div ref={chatEndRef} /> 
               </div>
 
               {/* Input de Chat */}
-              <div className="sticky bottom-0 bg-zinc-950 pt-4 border-t border-zinc-800">
+              <div className="absolute bottom-0 left-0 right-0 bg-zinc-950 p-6 border-t border-zinc-800">
                 <div className="relative">
                   <textarea
                     value={newComment}
@@ -510,16 +569,13 @@ export function TaskDetailsModal({
                     <Plus size={16} />
                   </button>
                 </div>
-                <p className="text-[9px] text-zinc-600 mt-2 text-center uppercase tracking-widest">
-                  O histórico de chat é imutável para fins de auditoria
-                </p>
               </div>
             </div>
           )}
         </div>
 
         {/* Rodapé de Ação */}
-        <div className="p-6 bg-zinc-900/30 border-t border-zinc-800 flex gap-4">
+        <div className="p-6 bg-zinc-900/30 border-t border-zinc-800 flex gap-4 z-10">
           <button 
             onClick={handleDelete}
             className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all border border-red-500/20"

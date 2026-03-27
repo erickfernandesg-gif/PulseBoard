@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Filter, Download, LayoutDashboard, TrendingUp, CheckCircle2, AlertCircle, Loader2, Users } from "lucide-react";
+import { Filter, Download, LayoutDashboard, TrendingUp, CheckCircle2, AlertCircle, Loader2, Users, Clock, DollarSign, AlertOctagon, User } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -16,34 +16,39 @@ export default function ReportsPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [timeLogs, setTimeLogs] = useState<any[]>([]);
+  const [userRates, setUserRates] = useState<any[]>([]);
   
   // Filtros Ativos
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedUser, setSelectedUser] = useState(""); // NOVO ESTADO: Filtro por Pessoa
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Busca paralela otimizada (Trazendo Tabelas, Tarefas, Equipes e Perfis)
-      const [boardsRes, tasksRes, teamsRes, profilesRes] = await Promise.all([
+      // Busca Paralela Otimizada MÁXIMA (Trazendo o Financeiro e Logs de Tempo)
+      const [boardsRes, tasksRes, teamsRes, profilesRes, timeRes, ratesRes] = await Promise.all([
         supabase.from("boards").select("*").order("created_at", { ascending: false }),
-        supabase.from("tasks").select("id, board_id, status, created_at, assigned_to"),
+        supabase.from("tasks").select("id, board_id, status, created_at, assigned_to, is_blocked"),
         supabase.from("teams").select("*").order("name"),
-        supabase.from("profiles").select("id, team_id")
+        supabase.from("profiles").select("id, team_id, full_name, email").order("full_name"),
+        supabase.from("time_logs").select("*"),
+        supabase.from("user_rates").select("*")
       ]);
 
       if (boardsRes.error) throw boardsRes.error;
       if (tasksRes.error) throw tasksRes.error;
-      if (teamsRes.error) throw teamsRes.error;
-      if (profilesRes.error) throw profilesRes.error;
 
       setBoards(boardsRes.data || []);
       setTasks(tasksRes.data || []);
       setTeams(teamsRes.data || []);
       setProfiles(profilesRes.data || []);
+      setTimeLogs(timeRes.data || []);
+      setUserRates(ratesRes.data || []);
     } catch (error) {
       console.error("Erro ao buscar dados do relatório:", error);
-      toast.error("Erro ao carregar os relatórios.");
+      toast.error("Erro ao carregar os relatórios operacionais e financeiros.");
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +58,21 @@ export default function ReportsPage() {
     fetchData();
   }, [fetchData]);
 
-  // --- MOTOR DE REGRAS BI (Com Cruzamento Relacional) ---
+  // Formatações Utilitárias (Helpers de UX)
+  const formatTime = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours === 0 && mins === 0) return "0h";
+    if (hours === 0) return `${mins}m`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}m`;
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  // --- MOTOR DE REGRAS BI (Com Cruzamento Relacional e Financeiro) ---
   const processReportData = () => {
     let filteredTasks = tasks;
 
@@ -65,26 +84,48 @@ export default function ReportsPage() {
       });
     }
 
-    // 2. Aplica o Filtro de Equipe (Cruzamento de Dados)
+    // 2. Aplica o Filtro de Equipe
     if (selectedTeam) {
-      // Descobre quais usuários pertencem à equipe selecionada
       const usersInThisTeam = profiles
         .filter(profile => profile.team_id === selectedTeam)
         .map(profile => profile.id);
 
-      // Mantém apenas as tarefas que estão atribuídas a esses usuários
       filteredTasks = filteredTasks.filter(task => 
         task.assigned_to && usersInThisTeam.includes(task.assigned_to)
       );
     }
 
+    // 3. Aplica o Filtro de Pessoa (Individual)
+    if (selectedUser) {
+      filteredTasks = filteredTasks.filter(task => task.assigned_to === selectedUser);
+    }
+
     const reportData = boards.map((board) => {
       const boardTasks = filteredTasks.filter((t) => t.board_id === board.id);
-      const totalTasks = boardTasks.length;
+      const boardTaskIds = boardTasks.map(t => t.id);
       
+      // Métricas de Volume
+      const totalTasks = boardTasks.length;
       const completedTasks = boardTasks.filter((t) => t.status === "done" || t.status === "Feito" || t.status === "concluído").length;
+      const blockedTasks = boardTasks.filter((t) => t.is_blocked).length;
       const completionRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
+      // Métricas de Tempo e Dinheiro (Custo Real)
+      let totalMinutes = 0;
+      let totalCost = 0;
+
+      const boardTimeLogs = timeLogs.filter(log => boardTaskIds.includes(log.task_id));
+      
+      boardTimeLogs.forEach(log => {
+        totalMinutes += log.minutes;
+        const userRateInfo = userRates.find(r => r.user_id === log.user_id);
+        const hourlyRate = userRateInfo ? Number(userRateInfo.hourly_rate) : 0;
+        
+        // Regra de Negócio: (Minutos / 60) * Valor da Hora = Custo do Apontamento
+        totalCost += (log.minutes / 60) * hourlyRate;
+      });
+
+      // Status Visual da Operação
       let statusLabel = "Crítico";
       let statusColor = "text-red-400 bg-red-500/10 border-red-500/20";
       let barColor = "bg-red-500";
@@ -97,6 +138,10 @@ export default function ReportsPage() {
         statusLabel = "Concluído";
         statusColor = "text-blue-400 bg-blue-500/10 border-blue-500/20";
         barColor = "bg-blue-500";
+      } else if (blockedTasks > 0) {
+        statusLabel = "Impedido";
+        statusColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+        barColor = "bg-amber-500";
       } else if (completionRate >= 70) {
         statusLabel = "Saudável";
         statusColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
@@ -112,15 +157,18 @@ export default function ReportsPage() {
         name: board.name,
         totalTasks,
         completedTasks,
+        blockedTasks,
         completionRate,
+        totalMinutes,
+        totalCost,
         statusLabel,
         statusColor,
         barColor,
       };
     });
 
-    // UX: Se um filtro estiver ativo, ocultamos os projetos que ficaram vazios para limpar a tela
-    if (selectedMonth || selectedTeam) {
+    // UX: Oculta projetos vazios se houver qualquer filtro ativo
+    if (selectedMonth || selectedTeam || selectedUser) {
       return reportData.filter(project => project.totalTasks > 0);
     }
 
@@ -129,13 +177,15 @@ export default function ReportsPage() {
 
   const reportData = processReportData();
 
-  // --- MÉTRICAS GLOBAIS ---
+  // --- MÉTRICAS GLOBAIS EXECUTIVAS ---
   const globalTotalTasks = reportData.reduce((acc, curr) => acc + curr.totalTasks, 0);
   const globalCompletedTasks = reportData.reduce((acc, curr) => acc + curr.completedTasks, 0);
+  const globalBlockedTasks = reportData.reduce((acc, curr) => acc + curr.blockedTasks, 0);
+  const globalTotalMinutes = reportData.reduce((acc, curr) => acc + curr.totalMinutes, 0);
+  const globalTotalCost = reportData.reduce((acc, curr) => acc + curr.totalCost, 0);
   const globalCompletionRate = globalTotalTasks === 0 ? 0 : Math.round((globalCompletedTasks / globalTotalTasks) * 100);
-  const projectsAtRisk = reportData.filter(r => r.statusLabel === "Crítico").length;
 
-  // --- EXPORTAÇÃO EXCEL DINÂMICA ---
+  // --- EXPORTAÇÃO EXCEL DINÂMICA (Nível Diretoria) ---
   const exportToExcel = () => {
     try {
       if (reportData.length === 0) return toast.info("Não há dados para exportar com estes filtros.");
@@ -144,7 +194,10 @@ export default function ReportsPage() {
         "Nome do Projeto": row.name,
         "Total de Tarefas": row.totalTasks,
         "Tarefas Concluídas": row.completedTasks,
+        "Tarefas com Impedimento": row.blockedTasks,
         "Taxa de Conclusão (%)": `${row.completionRate}%`,
+        "Horas Investidas": formatTime(row.totalMinutes),
+        "Custo Operacional (R$)": formatCurrency(row.totalCost),
         "Status da Operação": row.statusLabel
       }));
 
@@ -152,28 +205,36 @@ export default function ReportsPage() {
         "Nome do Projeto": "TOTAL GERAL DA SELEÇÃO",
         "Total de Tarefas": globalTotalTasks,
         "Tarefas Concluídas": globalCompletedTasks,
+        "Tarefas com Impedimento": globalBlockedTasks,
         "Taxa de Conclusão (%)": `${globalCompletionRate}%`,
-        "Status da Operação": projectsAtRisk > 0 ? "ATENÇÃO" : "SAUDÁVEL"
+        "Horas Investidas": formatTime(globalTotalMinutes),
+        "Custo Operacional (R$)": formatCurrency(globalTotalCost),
+        "Status da Operação": globalBlockedTasks > 0 ? "ATENÇÃO" : "SAUDÁVEL"
       });
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
-      worksheet['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 22 }];
+      worksheet['!cols'] = [{ wch: 35 }, { wch: 15 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }];
 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Visão Operacional");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Visão Executiva");
 
-      // Constrói o nome do arquivo baseado nos filtros escolhidos
       let teamNameForFile = "Geral";
       if (selectedTeam) {
         const t = teams.find(t => t.id === selectedTeam);
-        if (t) teamNameForFile = t.name.replace(/[^a-zA-Z0-9]/g, "_"); // Remove espaços/caracteres especiais
+        if (t) teamNameForFile = t.name.replace(/[^a-zA-Z0-9]/g, "_");
+      }
+
+      let userForFile = "";
+      if (selectedUser) {
+        const p = profiles.find(p => p.id === selectedUser);
+        if (p) userForFile = "_" + (p.full_name || "Membro").replace(/[^a-zA-Z0-9]/g, "_");
       }
       
       const monthForFile = selectedMonth ? `_${selectedMonth}` : "";
-      const fileName = `Relatorio_PulseBoard_${teamNameForFile}${monthForFile}.xlsx`;
+      const fileName = `Dash_Operacional_PulseBoard_${teamNameForFile}${userForFile}${monthForFile}.xlsx`;
       
       XLSX.writeFile(workbook, fileName);
-      toast.success("Excel gerado com sucesso!");
+      toast.success("Relatório gerado com sucesso!");
     } catch (error) {
       toast.error("Erro ao gerar arquivo Excel.");
     }
@@ -186,11 +247,11 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             <LayoutDashboard className="text-indigo-500" /> Relatórios Operacionais
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">Visão macro da saúde e progresso da operação.</p>
+          <p className="text-sm text-zinc-400 mt-1">Análise de produtividade, gargalos operacionais e entregas da equipe.</p>
         </div>
         
         {/* BARRA DE FILTROS AVANÇADA */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto bg-zinc-900/80 p-2 rounded-xl border border-zinc-800 shadow-lg">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto bg-zinc-900/80 p-2 rounded-xl border border-zinc-800 shadow-lg flex-wrap justify-end">
           
           {/* Filtro de Equipe */}
           <div className="flex items-center gap-2 px-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
@@ -198,11 +259,28 @@ export default function ReportsPage() {
             <select 
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="bg-transparent text-sm text-white rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px]"
+              className="bg-transparent text-sm text-white rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px] cursor-pointer"
             >
               <option value="" className="bg-zinc-900">Todas as Equipes</option>
               {teams.map(team => (
                 <option key={team.id} value={team.id} className="bg-zinc-900">{team.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro de Pessoa */}
+          <div className="flex items-center gap-2 px-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+            <User size={14} className="text-zinc-400 ml-1" />
+            <select 
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="bg-transparent text-sm text-white rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px] cursor-pointer"
+            >
+              <option value="" className="bg-zinc-900">Todos os Membros</option>
+              {profiles.map(profile => (
+                <option key={profile.id} value={profile.id} className="bg-zinc-900">
+                  {profile.full_name || profile.email}
+                </option>
               ))}
             </select>
           </div>
@@ -214,14 +292,14 @@ export default function ReportsPage() {
               type="month" 
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-sm text-white rounded px-1 py-1.5 outline-none min-w-[130px]"
+              className="bg-transparent text-sm text-white rounded px-1 py-1.5 outline-none min-w-[130px] cursor-pointer"
             />
           </div>
 
-          {/* Botão de Limpar (Só aparece se houver filtro) */}
-          {(selectedMonth || selectedTeam) && (
+          {/* Botão de Limpar */}
+          {(selectedMonth || selectedTeam || selectedUser) && (
             <button 
-              onClick={() => { setSelectedMonth(""); setSelectedTeam(""); }} 
+              onClick={() => { setSelectedMonth(""); setSelectedTeam(""); setSelectedUser(""); }} 
               className="text-xs font-bold text-zinc-400 hover:text-white px-3 py-2 bg-zinc-800 rounded-lg transition-colors border border-zinc-700 hover:border-zinc-500"
             >
               Limpar Filtros
@@ -234,47 +312,62 @@ export default function ReportsPage() {
         <div className="flex justify-center items-center py-20"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 flex flex-col">
+          {/* CARDS DE MÉTRICAS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col relative overflow-hidden">
               <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                <TrendingUp size={16} className="text-indigo-400" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider">Volume Total (Tarefas)</h3>
+                <CheckCircle2 size={16} className="text-indigo-400" />
+                <h3 className="text-[11px] font-bold uppercase tracking-wider">Desempenho Global</h3>
               </div>
-              <span className="text-3xl font-bold text-white">{globalTotalTasks}</span>
-              <p className="text-xs text-zinc-500 mt-2">No período/equipe selecionada</p>
-            </div>
-
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 flex flex-col">
-              <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                <CheckCircle2 size={16} className="text-emerald-400" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider">Taxa de Conclusão</h3>
-              </div>
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-2 mt-1">
                 <span className="text-3xl font-bold text-white">{globalCompletionRate}%</span>
-                <span className="text-sm text-emerald-400 font-medium mb-1">({globalCompletedTasks} entregues)</span>
+                <span className="text-xs text-zinc-500 font-medium mb-1.5">{globalCompletedTasks} de {globalTotalTasks}</span>
               </div>
-              <div className="w-full h-1.5 bg-zinc-800 rounded-full mt-3 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${globalCompletionRate}%` }}></div>
+              <div className="w-full h-1 bg-zinc-800 rounded-full mt-auto">
+                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${globalCompletionRate}%` }}></div>
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 flex flex-col">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col">
               <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                <AlertCircle size={16} className={projectsAtRisk > 0 ? "text-red-400" : "text-zinc-500"} />
-                <h3 className="text-sm font-semibold uppercase tracking-wider">Projetos em Risco</h3>
+                <AlertOctagon size={16} className={globalBlockedTasks > 0 ? "text-red-400" : "text-zinc-500"} />
+                <h3 className="text-[11px] font-bold uppercase tracking-wider">Impedimentos / Gargalos</h3>
               </div>
-              <span className={`text-3xl font-bold ${projectsAtRisk > 0 ? "text-red-400" : "text-white"}`}>
-                {projectsAtRisk}
+              <span className={`text-3xl font-bold mt-1 ${globalBlockedTasks > 0 ? "text-red-400" : "text-white"}`}>
+                {globalBlockedTasks}
               </span>
-              <p className="text-xs text-zinc-500 mt-2">Projetos com taxa de conclusão crítica</p>
+              <p className="text-[10px] text-zinc-500 mt-auto uppercase tracking-wide">Tarefas paradas aguardando ação</p>
             </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col">
+              <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                <Clock size={16} className="text-amber-400" />
+                <h3 className="text-[11px] font-bold uppercase tracking-wider">Horas Investidas</h3>
+              </div>
+              <span className="text-3xl font-bold text-white mt-1">{formatTime(globalTotalMinutes)}</span>
+              <p className="text-[10px] text-zinc-500 mt-auto uppercase tracking-wide">Tempo logado na seleção</p>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
+                <DollarSign size={100} />
+              </div>
+              <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                <DollarSign size={16} className="text-emerald-400" />
+                <h3 className="text-[11px] font-bold uppercase tracking-wider">Custo de Operação</h3>
+              </div>
+              <span className="text-3xl font-bold text-emerald-400 mt-1">{formatCurrency(globalTotalCost)}</span>
+              <p className="text-[10px] text-zinc-500 mt-auto uppercase tracking-wide">Com base nas taxas cadastradas</p>
+            </div>
+
           </div>
 
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-lg">
             <div className="p-6 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-900/40">
               <div>
-                <h2 className="text-lg font-semibold text-white">Desempenho por Projeto</h2>
-                {(selectedMonth || selectedTeam) && (
+                <h2 className="text-lg font-semibold text-white">Análise Detalhada por Projeto</h2>
+                {(selectedMonth || selectedTeam || selectedUser) && (
                   <span className="text-xs text-indigo-400 font-medium bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 mt-1 inline-block">
                     Visualizando dados filtrados
                   </span>
@@ -293,10 +386,10 @@ export default function ReportsPage() {
                 <thead className="bg-zinc-800/50 text-xs uppercase text-zinc-500 tracking-wider">
                   <tr>
                     <th className="px-6 py-4 font-semibold">Projeto</th>
-                    <th className="px-6 py-4 font-semibold text-center">Total de Tarefas</th>
-                    <th className="px-6 py-4 font-semibold text-center">Tarefas Concluídas</th>
-                    <th className="px-6 py-4 font-semibold">Progresso (Taxa)</th>
-                    <th className="px-6 py-4 font-semibold">Status Operacional</th>
+                    <th className="px-6 py-4 font-semibold text-center">Progresso</th>
+                    <th className="px-6 py-4 font-semibold text-center">Bloqueios</th>
+                    <th className="px-6 py-4 font-semibold text-right">Tempo Logado</th>
+                    <th className="px-6 py-4 font-semibold text-right">Custo Estimado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
@@ -309,24 +402,35 @@ export default function ReportsPage() {
                   ) : (
                     reportData.map((project) => (
                       <tr key={project.id} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-6 py-5 font-bold text-white">{project.name}</td>
-                        <td className="px-6 py-5 text-center text-zinc-300">{project.totalTasks}</td>
-                        <td className="px-6 py-5 text-center text-emerald-400 font-medium">{project.completedTasks}</td>
                         <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-2.5 w-32 rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
-                              <div 
-                                className={`h-full rounded-full ${project.barColor} transition-all duration-500`} 
-                                style={{ width: `${project.completionRate}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-zinc-300 font-bold min-w-[3ch]">{project.completionRate}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={`rounded-md border px-2.5 py-1 text-xs font-bold uppercase tracking-wider shadow-sm ${project.statusColor}`}>
+                          <p className="font-bold text-white mb-1">{project.name}</p>
+                          <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${project.statusColor}`}>
                             {project.statusLabel}
                           </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-white font-bold">{project.completionRate}%</span>
+                            <div className="h-1.5 w-24 rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                              <div className={`h-full rounded-full ${project.barColor} transition-all duration-500`} style={{ width: `${project.completionRate}%` }}></div>
+                            </div>
+                            <span className="text-[10px] text-zinc-500">{project.completedTasks} de {project.totalTasks} tarefas</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-center">
+                          {project.blockedTasks > 0 ? (
+                            <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded-md text-xs font-bold">
+                              <AlertOctagon size={12} /> {project.blockedTasks}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 text-right font-medium text-amber-400/90">
+                          {formatTime(project.totalMinutes)}
+                        </td>
+                        <td className="px-6 py-5 text-right font-bold text-emerald-400">
+                          {formatCurrency(project.totalCost)}
                         </td>
                       </tr>
                     ))

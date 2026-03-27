@@ -246,3 +246,18 @@ CREATE TABLE IF NOT EXISTS automations (
 
 ALTER TABLE tasks ADD COLUMN is_blocked BOOLEAN DEFAULT false;
 ALTER TABLE tasks ADD COLUMN blocker_reason TEXT;
+
+-- Cria a tabela de Clientes
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Adiciona a coluna client_id na tabela de tarefas
+ALTER TABLE tasks ADD COLUMN client_id UUID REFERENCES clients(id) ON DELETE SET NULL;
+
+-- Adiciona a coluna de tempo estimado (em minutos, para manter o padrão)
+ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER DEFAULT 0;
