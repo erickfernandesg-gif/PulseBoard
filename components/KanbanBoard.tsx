@@ -28,12 +28,14 @@ export function KanbanBoard({
   // 1. Definição das Colunas (Agora com a Caixa de Entrada)
   const COLUMNS = useMemo(() => {
     // Se o usuário customizou as colunas no banco, usamos elas.
-    // Dica: Se quiser forçar o "backlog" sempre, podemos injetar aqui futuramente.
     if (board?.settings && Array.isArray(board.settings) && board.settings.length > 0) {
+      // Garante que a coluna backlog exista, se não existir, adiciona no início
+      const hasBacklog = board.settings.some((c: any) => c.id === "backlog");
+      if (!hasBacklog) return [{ id: "backlog", title: "Caixa de Entrada" }, ...board.settings];
       return board.settings;
     }
     return [
-      { id: "backlog", title: "Caixa de Entrada" }, // <-- NOVA COLUNA (Triagem)
+      { id: "backlog", title: "Caixa de Entrada" },
       { id: "todo", title: "A Fazer" },
       { id: "in-progress", title: "Em Execução" },
       { id: "homologation", title: "Homologação" },

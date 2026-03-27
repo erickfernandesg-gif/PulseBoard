@@ -309,8 +309,13 @@ const handleUpdateComment = async (commentId: string) => {
     const mins = parseInt(inputMinutes) || 0;
     const totalMinutesToSave = (hrs * 60) + mins;
 
-    if (totalMinutesToSave <= 0) {
+    if (totalMinutesToSave <= 0 || totalMinutesToSave > 1440) { // Max 24h
       toast.error("Insira uma quantidade válida de tempo.");
+      return;
+    }
+
+    if (!timeDescription.trim()) {
+      toast.error("Descreva brevemente o que foi feito nestas horas.");
       return;
     }
     

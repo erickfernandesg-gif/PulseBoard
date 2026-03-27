@@ -21,7 +21,7 @@ export function CreateTaskModal({
   // Estados Base
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("backlog"); // Status Padronizado
+  const [status, setStatus] = useState("backlog"); 
   const [priority, setPriority] = useState("medium");
   
   // Estados de Planejamento e Envolvidos
@@ -180,11 +180,11 @@ export function CreateTaskModal({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="status" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Etapa Inicial</label>
                       <select id="status" value={status} onChange={(e) => setStatus(e.target.value)} className="block w-full rounded-xl border-0 bg-zinc-900 py-3 px-4 text-xs font-bold text-indigo-400 ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
-                        <option value="backlog">Caixa de Entrada</option>
+                        <option value="backlog">📥 Caixa de Entrada (Triagem)</option>
                         <option value="todo">Backlog (A Fazer)</option>
                         <option value="in-progress">Desenvolvimento</option>
                         <option value="homologation">Homologação</option>
@@ -193,11 +193,20 @@ export function CreateTaskModal({
                       </select>
                     </div>
                     <div>
+                      <label htmlFor="priority" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Prioridade / Impacto</label>
+                      <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)} className="block w-full rounded-xl border-0 bg-zinc-900 py-3 px-4 text-xs font-bold text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                        <option value="low">Baixo - Rotina</option>
+                        <option value="medium">Médio - Importante</option>
+                        <option value="high">Alto - Urgência</option>
+                        <option value="critical">Crítico - Bloqueante</option>
+                      </select>
+                    </div>
+                  </div>
+                    <div>
                       <label htmlFor="targetMonth" className="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><CalendarDays size={12}/> Mês / Ciclo</label>
                       <input type="month" id="targetMonth" value={targetMonth} onChange={(e) => setTargetMonth(e.target.value)} className="block w-full rounded-xl border-0 bg-emerald-500/10 py-3 px-4 text-xs text-emerald-400 font-bold ring-1 ring-inset ring-emerald-500/30 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer" />
                     </div>
-                  </div>
-                </div>
+                  </div> {/* Closes COLUNA 1: ESCOPO E IDENTIFICAÇÃO */}
 
                 {/* COLUNA 2: EQUIPE E TEMPO */}
                 <div className="space-y-5">
@@ -266,9 +275,9 @@ export function CreateTaskModal({
                       ))}
                     </div>
                   </div>
-                </div>
-              </div>
-
+                </div> {/* Closes COLUNA 2: EQUIPE E TEMPO */}
+              </div> {/* Closes the main grid div (line 148) */}
+              
               {/* RODAPÉ DO MODAL */}
               <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-zinc-800/80">
                 <button type="button" onClick={() => setIsOpen(false)} className="rounded-xl px-6 py-3 text-sm font-bold text-zinc-500 hover:bg-zinc-900 hover:text-white transition-all">

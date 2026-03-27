@@ -13,6 +13,13 @@ export default function PublicFormPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const IMPACT_PRIORITY_MAP: Record<string, "urgent" | "high" | "medium" | "low"> = {
+    "Bloqueante": "urgent",
+    "Alto": "high",
+    "Médio": "medium",
+    "Baixo": "low"
+  };
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -43,18 +50,21 @@ DESCRIÇÃO:
 ${rawDescription}
     `.trim();
 
+    const priority = IMPACT_PRIORITY_MAP[impact] || "medium";
+
     const { error: insertError } = await supabase.from("tasks").insert([
       {
         board_id: boardId,
-        title,
+        title: title.trim(),
         description: finalDescription,
-        status: "todo",
-        priority: impact === "Bloqueante" ? "urgent" : impact === "Alto" ? "high" : "medium",
+        status: "backlog",
+        priority,
         due_date: desiredDate || null,
       },
     ]);
 
     if (insertError) {
+      console.error("Erro na submissão:", insertError);
       setError("Erro ao enviar a solicitação. Verifique os dados e tente novamente.");
     } else {
       setSuccess(true);

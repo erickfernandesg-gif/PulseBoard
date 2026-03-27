@@ -13,7 +13,8 @@ const BOARD_TEMPLATES = {
     label: "Desenvolvimento",
     icon: <Code size={18} />,
     columns: [
-      { id: "todo", title: "Backlog" },
+      { id: "backlog", title: "Caixa de Entrada" },
+      { id: "todo", title: "A Fazer" },
       { id: "in-progress", title: "Desenvolvimento" },
       { id: "homologation", title: "Homologação" },
       { id: "production", title: "Produção" },
@@ -24,6 +25,7 @@ const BOARD_TEMPLATES = {
     label: "Operação",
     icon: <ShoppingBag size={18} />,
     columns: [
+      { id: "backlog", title: "Caixa de Entrada" },
       { id: "todo", title: "Novo Pedido" },
       { id: "in-progress", title: "Em Produção" },
       { id: "delivery", title: "Pronto p/ Entrega" },
@@ -34,6 +36,7 @@ const BOARD_TEMPLATES = {
     label: "Fluxo Simples",
     icon: <ListChecks size={18} />,
     columns: [
+      { id: "backlog", title: "Caixa de Entrada" },
       { id: "todo", title: "A Fazer" },
       { id: "in-progress", title: "Em Execução" },
       { id: "done", title: "Concluído" },
