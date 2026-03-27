@@ -6,6 +6,7 @@ import { KanbanColumn } from "./KanbanColumn";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { Filter, Inbox, CalendarDays, Layers } from "lucide-react";
+import { FullTaskData } from "./KanbanTask"; // Import the shared Task type
 
 export function KanbanBoard({
   board,
@@ -44,7 +45,7 @@ export function KanbanBoard({
   // 2. Motor de Filtros (Extrai os meses dinamicamente das tarefas)
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
-    tasks.forEach((t: any) => {
+    tasks.forEach((t: FullTaskData) => { // Use FullTaskData
       if (t.target_month) months.add(t.target_month);
     });
     // Ordena do mais recente para o mais antigo (ex: 2026-05, 2026-04)
@@ -63,8 +64,8 @@ export function KanbanBoard({
   // 3. Aplica o filtro selecionado
   const filteredTasks = useMemo(() => {
     if (selectedMonth === "all") return tasks;
-    if (selectedMonth === "inbox") return tasks.filter((t: any) => !t.target_month);
-    return tasks.filter((t: any) => t.target_month === selectedMonth);
+    if (selectedMonth === "inbox") return tasks.filter((t: FullTaskData) => !t.target_month); // Use FullTaskData
+    return tasks.filter((t: FullTaskData) => t.target_month === selectedMonth); // Use FullTaskData
   }, [tasks, selectedMonth]);
 
   // 4. Lógica de arrastar e soltar
@@ -77,9 +78,9 @@ export function KanbanBoard({
     const newStatus = destination.droppableId;
     
     // Atualização Otimista
-    setTasks((prev: any) => {
+    setTasks((prev: FullTaskData[]) => { // Use FullTaskData[]
       const updated = [...prev];
-      const taskIndex = updated.findIndex((t: any) => t.id === draggableId);
+      const taskIndex = updated.findIndex((t: FullTaskData) => t.id === draggableId); // Use FullTaskData
       if (taskIndex > -1) {
         updated[taskIndex] = { ...updated[taskIndex], status: newStatus };
       }
@@ -151,7 +152,7 @@ export function KanbanBoard({
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-6 min-w-max pb-4 h-full items-start">
             {COLUMNS.map((col: any) => {
-              const columnTasks = filteredTasks.filter((t: any) => t.status === col.id);
+              const columnTasks = filteredTasks.filter((t: FullTaskData) => t.status === col.id); // Use FullTaskData
               return (
                 <KanbanColumn
                   key={col.id}

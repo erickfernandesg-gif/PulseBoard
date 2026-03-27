@@ -8,7 +8,15 @@ import { LayoutGrid, List, Calendar, Loader2, RefreshCw } from "lucide-react";
 import { CreateTaskModal } from "./CreateTaskModal";
 import { cn } from "@/utils/cn";
 import { createClient } from "@/utils/supabase/client";
+import { FullTaskData } from "./KanbanTask"; // Import the shared Task type
 import { toast } from "sonner";
+
+// Define ProfileData type based on what's fetched
+interface ProfileData {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+}
 
 export function BoardClient({
   board,
@@ -16,11 +24,11 @@ export function BoardClient({
   profiles,
 }: {
   board: any;
-  initialTasks: any[];
-  profiles: any[];
+  initialTasks: FullTaskData[]; // Use the shared type
+  profiles: ProfileData[]; // Use the defined type
 }) {
   const [view, setView] = useState<"kanban" | "table" | "gantt">("kanban");
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState<FullTaskData[]>(initialTasks); // State also uses the shared type
   const [isRefreshing, setIsRefreshing] = useState(false);
   const supabase = createClient();
 
@@ -36,7 +44,7 @@ export function BoardClient({
         .order("position_index", { ascending: true });
       
       if (error) throw error;
-      if (data) setTasks(data);
+      if (data) setTasks(data as FullTaskData[]); // Cast to the correct type
     } catch (error: any) {
       console.error("Erro ao sincronizar tarefas:", error);
       toast.error("Erro ao sincronizar dados com o servidor.");

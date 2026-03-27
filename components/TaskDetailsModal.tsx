@@ -7,16 +7,50 @@ import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/utils/cn";
+import { FullTaskData } from "./KanbanTask"; // Import the shared Task type
+
+// --- Definições de Tipos para Robustez (Melhoria Sênior) ---
+interface Profile {
+  id: string;
+  full_name: string;
+  // Adicione outros campos do perfil se necessário
+}
+
+interface Client {
+  id: string;
+  name: string;
+}
+
+interface Comment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profiles: Pick<Profile, 'full_name'> | null;
+}
+
+interface TimeLog {
+  id: string;
+  task_id: string;
+  user_id: string;
+  minutes: number;
+  description: string | null;
+  log_date: string;
+  profiles: Pick<Profile, 'full_name'> | null;
+}
+
+type Task = FullTaskData; // Use the unified Task type
 
 interface TaskDetailsModalProps {
-  task: any;
+  task: Task;
   onClose: () => void;
   onTaskUpdated?: () => void;
   onTaskDeleted?: (taskId: string) => void;
 }
 
 export function TaskDetailsModal({
-  task,
+  task: initialTask, // Renomeado para evitar conflito com o estado 'task'
   onClose,
   onTaskUpdated,
   onTaskDeleted,
@@ -24,37 +58,37 @@ export function TaskDetailsModal({
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
   const [isSaving, setIsSaving] = useState(false);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [comments, setComments] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
-  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [collaborators, setCollaborators] = useState<string[]>([]); // Armazena apenas IDs
   
   // Referência para o Auto-scroll do Chat
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Estados de Clientes (NOVO)
-  const [clients, setClients] = useState<any[]>([]);
-  const [clientId, setClientId] = useState(task.client_id || "");
+  // Estados de Clientes
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientId, setClientId] = useState(initialTask.client_id || "");
 
   // Estados de Apontamento de Horas (ATUALIZADO PARA H E M)
-  const [timeLogs, setTimeLogs] = useState<any[]>([]);
+  const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [inputHours, setInputHours] = useState("");
   const [inputMinutes, setInputMinutes] = useState("");
   const [timeDescription, setTimeDescription] = useState("");
   const [isSubmittingTime, setIsSubmittingTime] = useState(false);
 
   // Estados dos campos editáveis da Tarefa
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description || "");
-  const [startDate, setStartDate] = useState(task.start_date ? task.start_date.split("T")[0] : "");
-  const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split("T")[0] : "");
-  const [assignedTo, setAssignedTo] = useState(task.assigned_to || "");
-  const [status, setStatus] = useState(task.status);
+  const [title, setTitle] = useState(initialTask.title);
+  const [description, setDescription] = useState(initialTask.description || "");
+  const [startDate, setStartDate] = useState(initialTask.start_date ? initialTask.start_date.split("T")[0] : "");
+  const [dueDate, setDueDate] = useState(initialTask.due_date ? initialTask.due_date.split("T")[0] : "");
+  const [assignedTo, setAssignedTo] = useState(initialTask.assigned_to || "");
+  const [status, setStatus] = useState(initialTask.status);
   
   // Estados de Bloqueio e Mês
-  const [isBlocked, setIsBlocked] = useState(task.is_blocked || false);
-  const [blockerReason, setBlockerReason] = useState(task.blocker_reason || "");
-  const [targetMonth, setTargetMonth] = useState(task.target_month || "");
+  const [isBlocked, setIsBlocked] = useState(initialTask.is_blocked || false);
+  const [blockerReason, setBlockerReason] = useState(initialTask.blocker_reason || "");
+  const [targetMonth, setTargetMonth] = useState(initialTask.target_month || "");
 
   // Função para formatar minutos em Horas e Minutos (ex: 150m -> 2h 30m)
   const formatMinutes = (totalMinutes: number) => {
@@ -72,25 +106,38 @@ export function TaskDetailsModal({
     const [profRes, commRes, collRes, timeRes, clientsRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name"),
       supabase.from("task_comments")
-        .select("*, profiles(full_name)")
-        .eq("task_id", task.id)
+        .select("id, task_id, user_id, content, created_at, profiles(full_name)") // Seleção explícita
+        .eq("task_id", initialTask.id)
         .order("created_at", { ascending: false }),
       supabase.from("task_collaborators")
         .select("user_id, profiles(full_name)")
-        .eq("task_id", task.id),
+        .eq("task_id", initialTask.id),
       supabase.from("time_logs")
         .select("*, profiles(full_name)")
-        .eq("task_id", task.id)
+        .eq("task_id", initialTask.id)
         .order("created_at", { ascending: false }),
       supabase.from("clients").select("id, name").order("name") // Busca os Clientes
     ]);
 
     if (profRes.data) setProfiles(profRes.data);
-    if (commRes.data) setComments(commRes.data);
-    if (collRes.data) setCollaborators(collRes.data.map(c => c.user_id));
-    if (timeRes.data) setTimeLogs(timeRes.data);
+    if (commRes.data) {
+      // Tratamento Sênior: Garante que 'profiles' seja um objeto e não um array (comum em joins do Supabase)
+      const formatted = (commRes.data as any[]).map(c => ({
+        ...c,
+        profiles: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles
+      }));
+      setComments(formatted as unknown as Comment[]);
+    }
+    if (collRes.data) setCollaborators(collRes.data.map(c => c.user_id) as string[]);
+    if (timeRes.data) {
+      const formatted = (timeRes.data as any[]).map(t => ({
+        ...t,
+        profiles: Array.isArray(t.profiles) ? t.profiles[0] : t.profiles
+      }));
+      setTimeLogs(formatted as unknown as TimeLog[]);
+    }
     if (clientsRes.data) setClients(clientsRes.data);
-  }, [supabase, task.id]);
+  }, [supabase, initialTask.id]);
 
   useEffect(() => {
     fetchData();
@@ -104,14 +151,14 @@ export function TaskDetailsModal({
   }, [comments, activeTab]);
 
   const handleDelete = async () => {
-    if (!window.confirm("Tem certeza que deseja excluir esta tarefa? O histórico será perdido.")) return;
+    if (!window.confirm(`Tem certeza que deseja excluir a tarefa "${initialTask.title}"? O histórico será perdido.`)) return;
 
     try {
-      const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+      const { error } = await supabase.from("tasks").delete().eq("id", initialTask.id);
       if (error) throw error;
 
       toast.success("Tarefa excluída com sucesso");
-      if (onTaskDeleted) onTaskDeleted(task.id);
+      if (onTaskDeleted) onTaskDeleted(initialTask.id);
       onClose();
     } catch (error: any) {
       toast.error("Erro ao excluir a tarefa");
@@ -136,13 +183,13 @@ export function TaskDetailsModal({
           is_blocked: isBlocked,
           blocker_reason: isBlocked ? blockerReason : null,
         })
-        .eq("id", task.id);
+        .eq("id", initialTask.id);
 
       if (taskError) throw taskError;
 
-      await supabase.from("task_collaborators").delete().eq("task_id", task.id);
+      await supabase.from("task_collaborators").delete().eq("task_id", initialTask.id);
       if (collaborators.length > 0) {
-        const collData = collaborators.map(uid => ({ task_id: task.id, user_id: uid }));
+        const collData = collaborators.map(uid => ({ task_id: initialTask.id, user_id: uid }));
         await supabase.from("task_collaborators").insert(collData);
       }
 
@@ -162,7 +209,7 @@ export function TaskDetailsModal({
     if (!user) return;
 
     const { error } = await supabase.from("task_comments").insert({
-      task_id: task.id,
+      task_id: initialTask.id,
       user_id: user.id,
       content: newComment
     });
@@ -200,7 +247,7 @@ export function TaskDetailsModal({
     }
 
     const { error } = await supabase.from("time_logs").insert({
-      task_id: task.id,
+      task_id: initialTask.id,
       user_id: user.id,
       minutes: totalMinutesToSave, // O BD salva em minutos totais para os relatórios funcionarem
       description: timeDescription,

@@ -42,6 +42,7 @@ export function TableBoard({
     low: "bg-zinc-800 text-zinc-300 border-zinc-700",
     medium: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    urgent: "bg-purple-500/10 text-purple-400 border-purple-500/20 font-bold", // Added for consistency
     critical: "bg-red-500/10 text-red-400 border-red-500/30 font-bold",
   };
 
@@ -49,6 +50,7 @@ export function TableBoard({
     low: "Baixa",
     medium: "Média",
     high: "Alta",
+    urgent: "Urgente", // Added for consistency
     critical: "Crítica",
   };
 

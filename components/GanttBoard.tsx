@@ -4,8 +4,11 @@ import { useState, useMemo } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Building2, User, AlertTriangle, Clock } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr"; 
 
-export function GanttBoard({ tasks: initialTasks }: { tasks: any[] }) {
-  const [tasks, setTasks] = useState(initialTasks);
+// Import the shared Task type
+import { FullTaskData } from "./KanbanTask";
+
+export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
+  const [tasks, setTasks] = useState<FullTaskData[]>(initialTasks);
   const [startDate, setStartDate] = useState(() => {
     // Inicia o calendário 5 dias antes da data atual para dar contexto
     const date = new Date();
@@ -27,7 +30,7 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: any[] }) {
     });
   }, [startDate]);
 
-  const handleBarClick = async (task: any) => {
+  const handleBarClick = async (task: FullTaskData) => {
     const newDueDateStr = window.prompt(
       `REPLANEJAMENTO DE PRAZO\nAlterar prazo final da tarefa: "${task.title}"\nDigite a nova data (Formato: YYYY-MM-DD):`,
       task.due_date ? new Date(task.due_date).toISOString().split("T")[0] : ""
@@ -183,8 +186,8 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: any[] }) {
                           Interno
                         </div>
                       )}
-                      {task.estimated_minutes > 0 && (
-                        <span className="text-[9px] font-bold text-amber-500/70">{Math.floor(task.estimated_minutes / 60)}h</span>
+                      {(task.estimated_minutes ?? 0) > 0 && (
+                        <span className="text-[9px] font-bold text-amber-500/70">{Math.floor((task.estimated_minutes ?? 0) / 60)}h</span>
                       )}
                     </div>
                   </div>
@@ -211,7 +214,10 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: any[] }) {
                         {widthPercent > 10 && (
                           <div className="flex -space-x-1.5 shrink-0 ml-2">
                             {task.profiles ? (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-[9px] font-bold text-white border border-zinc-600 shadow-sm" title={task.profiles.full_name}>
+                              <div 
+                                className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-[9px] font-bold text-white border border-zinc-600 shadow-sm" 
+                                title={task.profiles.full_name || undefined}
+                              >
                                 {task.profiles.full_name?.charAt(0)}
                               </div>
                             ) : (

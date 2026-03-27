@@ -1,9 +1,16 @@
 "use client";
 
 import { Droppable } from "@hello-pangea/dnd";
-import { KanbanTask } from "./KanbanTask";
+import { KanbanTask, FullTaskData } from "./KanbanTask"; // Import FullTaskData
 
-export function KanbanColumn({ column, tasks, profiles, onTaskUpdated, onTaskDeleted }: any) {
+// Define ProfileData type based on what's fetched (from BoardClient)
+interface ProfileData {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+}
+
+export function KanbanColumn({ column, tasks, profiles, onTaskUpdated, onTaskDeleted }: { column: any; tasks: FullTaskData[]; profiles: ProfileData[]; onTaskUpdated?: () => void; onTaskDeleted?: (taskId: string) => void; }) {
   return (
     <div className="flex w-80 flex-col rounded-xl bg-zinc-900/50 border border-zinc-800/50 flex-shrink-0 max-h-full">
       <div className="flex items-center justify-between border-b border-zinc-800/50 p-4">
@@ -25,12 +32,11 @@ export function KanbanColumn({ column, tasks, profiles, onTaskUpdated, onTaskDel
               snapshot.isDraggingOver ? "bg-indigo-500/5" : ""
             }`}
           >
-            {tasks.map((task: any, index: number) => (
+            {tasks.map((task: FullTaskData, index: number) => (
               <KanbanTask
                 key={task.id}
                 task={task}
                 index={index}
-                profiles={profiles}
                 onTaskUpdated={onTaskUpdated}
                 onTaskDeleted={onTaskDeleted}
               />

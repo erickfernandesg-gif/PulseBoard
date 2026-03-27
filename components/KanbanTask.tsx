@@ -4,7 +4,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, User, ChevronLeft, ChevronRight, Loader2, AlertOctagon } from "lucide-react";
+import { Calendar, User, ChevronLeft, ChevronRight, Loader2, AlertOctagon, Building2, Timer } from "lucide-react";
 import { TaskDetailsModal } from "./TaskDetailsModal";
 import { cn } from "@/utils/cn";
 import { createClient } from "@/utils/supabase/client";
@@ -20,7 +20,38 @@ const STATUS_ORDER = [
   "done"
 ];
 
-export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
+// Define nested types for joined data
+interface JoinedTaskProfile {
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
+interface JoinedTaskClient {
+  name: string | null;
+}
+
+// Define the main Task interface for KanbanTask and other components receiving joined task data
+export interface FullTaskData { // Exported for use in other components like BoardClient, KanbanBoard, GanttBoard
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: "low" | "medium" | "high" | "urgent" | "critical"; // Enforce known priorities
+  is_blocked: boolean;
+  blocker_reason: string | null;
+  estimated_minutes: number | null;
+  total_minutes_spent: number | null;
+  start_date: string | null;
+  due_date: string | null;
+  client_id: string | null;
+  assigned_to: string | null;
+  target_month: string | null;
+  created_at: string; // Assuming created_at is always present in fetched tasks
+  profiles: JoinedTaskProfile | null; // Profile of assigned_to
+  clients: JoinedTaskClient | null;
+}
+
+export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task: FullTaskData; index: number; onTaskUpdated?: () => void; onTaskDeleted?: (taskId: string) => void; }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const supabase = createClient();
@@ -29,6 +60,7 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
     low: "bg-zinc-800 text-zinc-300 border-zinc-700",
     medium: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    urgent: "bg-purple-500/10 text-purple-400 border-purple-500/20", // Adicionado para consistência
     critical: "bg-red-500/10 text-red-400 border-red-500/30",
   };
 
@@ -36,8 +68,19 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
     low: "Baixa",
     medium: "Média",
     high: "Alta",
+    urgent: "Urgente", // Adicionado para consistência
     critical: "Crítica",
   };
+
+  // Lógica de progresso de tempo (Senior BI Insight)
+  const est = task.estimated_minutes || 0;
+  const spent = task.total_minutes_spent || 0;
+  const hasEstimates = est > 0;
+  const percentage = hasEstimates ? Math.min((spent / est) * 100, 100) : 0;
+  const isOverBudget = hasEstimates && spent > est;
+
+  // Formatação simplificada para o card
+  const formatMins = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h` : `${m}m`);
 
   // Descobre onde o card está agora
   const currentStatusIndex = STATUS_ORDER.indexOf(task.status || "todo");
@@ -84,7 +127,7 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
               snapshot.isDragging 
                 ? "border-indigo-500 shadow-2xl z-50 ring-2 ring-indigo-500/20 bg-zinc-900 opacity-95" 
                 : task.is_blocked
-                  ? "border-red-500/50 bg-[#1a0f0f] hover:border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.1)]" // Visual de Impedimento
+                  ? "border-red-500/50 bg-[#1a0f0f] hover:border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.1)] bg-[url('/diagonal-stripes.svg')]" // Visual de Impedimento
                   : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
             )}
             style={{
@@ -108,7 +151,7 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
               </span>
               
               {/* === OS BOTÕES DE SETA (Mover Fácil) === */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {isMoving && <Loader2 size={12} className="animate-spin text-indigo-500 mr-1" />}
                 
                 {canMoveLeft && (
@@ -137,8 +180,33 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
 
             {/* Corpo do Card (Clicável para abrir Detalhes) */}
             <div onClick={() => setIsModalOpen(true)} className="cursor-pointer group-hover:text-indigo-100 relative z-10">
-              <h4 className="font-semibold text-white text-sm transition-colors leading-tight">{task.title}</h4>
+              <div className="flex flex-col gap-1">
+                {task.clients?.name && (
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-400 uppercase tracking-tighter mb-1 truncate">
+                    <Building2 size={10} /> {task.clients.name}
+                  </div>
+                )}
+                <h4 className="font-semibold text-white text-sm transition-colors leading-tight">{task.title}</h4>
+              </div>
               
+              {/* Barra de Progresso de Tempo (Micro-dashboard) */}
+              {spent > 0 && (
+                <div className="mt-3 space-y-1">
+                  <div className="flex justify-between text-[9px] font-bold uppercase tracking-tighter">
+                    <span className={isOverBudget ? "text-red-400" : "text-zinc-500"}>
+                      {formatMins(spent)} consumidos
+                    </span>
+                    {hasEstimates && <span className="text-zinc-600">Alvo: {formatMins(est)}</span>}
+                  </div>
+                  <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div 
+                      className={cn("h-full transition-all duration-500", isOverBudget ? "bg-red-500" : "bg-emerald-500")}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* ALERTA DE BLOQUEIO OU DESCRIÇÃO */}
               {task.is_blocked ? (
                 <div className="mt-3 flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
@@ -179,7 +247,7 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: any) {
                 {task.assigned_to ? (
                   <div 
                     className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white uppercase shadow-sm"
-                    title={task.profiles?.full_name || "Usuário"}
+                    title={task.profiles?.full_name || "Usuário Atribuído"} // Fallback for title
                   >
                     {task.profiles?.full_name?.charAt(0) || <User size={12} />}
                   </div>
