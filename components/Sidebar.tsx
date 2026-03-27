@@ -17,7 +17,7 @@ interface SidebarProps {
   boards: any[];
 }
 
-export function Sidebar({ userProfile, boards }: SidebarProps) {
+export function Sidebar({ userProfile, boards = [] }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -60,6 +60,7 @@ export function Sidebar({ userProfile, boards }: SidebarProps) {
   const userRole = userProfile?.role || "user";
   const visibleLinks = mainLinks.filter(link => link.roles.includes(userRole));
 
+  // Evita erros de hidratação no Next.js ao usar localStorage
   if (!isMounted) return <div className="hidden md:flex h-full w-64 bg-zinc-950 border-r border-zinc-800/50"></div>;
 
   return (
@@ -102,7 +103,6 @@ export function Sidebar({ userProfile, boards }: SidebarProps) {
                 isActive ? "bg-indigo-500/10 text-indigo-400" : "text-zinc-400 hover:bg-zinc-900/80 hover:text-zinc-200"
               )}
             >
-              {/* Pílula indicadora de página ativa Nível Sênior */}
               {isActive && !isCollapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-indigo-500 rounded-r-full" />}
               
               <Icon size={isCollapsed ? 20 : 18} className={cn("shrink-0 transition-transform group-hover:scale-110", isActive ? "text-indigo-400" : "text-zinc-500")} />
@@ -120,10 +120,10 @@ export function Sidebar({ userProfile, boards }: SidebarProps) {
           <div className="w-full flex justify-center mb-4"><div className="w-6 h-px bg-zinc-800"></div></div>
         )}
         
-        {boards.length === 0 ? (
+        {boards?.length === 0 ? (
           !isCollapsed && <p className="px-4 py-2 text-xs text-zinc-600 italic">Nenhum quadro ativo.</p>
         ) : (
-          boards.map((board) => {
+          boards?.map((board) => {
             const href = `/boards/${board.id}`;
             const isActive = pathname === href;
             const firstLetter = board.name.charAt(0).toUpperCase();

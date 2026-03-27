@@ -9,15 +9,13 @@ import { cn } from "@/utils/cn";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-// 1. IMPORTANTE: Importar o tipo User do Supabase
 import { User } from "@supabase/supabase-js";
 
-// 2. ADICIONAR: Definir o que o componente espera receber
+// Interface que define o que o componente recebe
 interface TopbarProps {
   user: User | null;
 }
 
-// 3. ATUALIZAR: Receber a prop 'user'
 export function Topbar({ user }: TopbarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -33,11 +31,11 @@ export function Topbar({ user }: TopbarProps) {
 
   useEffect(() => {
     async function loadData() {
-      // Otimização: Se já recebemos o 'user' via prop, não precisamos chamar supabase.auth.getUser()
+      // Usamos o 'user' que veio via prop para evitar chamadas extras ao Auth
       const currentUser = user; 
       if (!currentUser) return;
 
-      // 1. Carregar Perfil (trazendo a 'role' para permissões)
+      // 1. Carregar Perfil
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -86,7 +84,7 @@ export function Topbar({ user }: TopbarProps) {
       document.removeEventListener("mousedown", handleClickOutside);
       supabase.removeChannel(channel);
     };
-  }, [supabase, user]); // Adicionei 'user' aqui como dependência
+  }, [supabase, user]);
 
   const handleLogout = async () => {
     try {

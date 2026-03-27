@@ -3,17 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LayoutGrid, KanbanSquare, TrendingUp, BarChart2, Workflow, Settings, Shield, FolderKanban, LogOut } from "lucide-react";
+import { 
+  Menu, X, LayoutGrid, KanbanSquare, TrendingUp, BarChart2, 
+  Workflow, Settings, Shield, FolderKanban, LogOut
+} from "lucide-react";
 import { cn } from "@/utils/cn";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
+// CORREÇÃO: Definindo a interface para receber os dados do Layout
 interface MobileSidebarProps {
   userProfile: any;
   boards: any[];
 }
 
-export function MobileSidebar({ userProfile, boards }: MobileSidebarProps) {
+export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -42,6 +46,7 @@ export function MobileSidebar({ userProfile, boards }: MobileSidebarProps) {
   const userRole = userProfile?.role || "user";
   const visibleLinks = mainLinks.filter(link => link.roles.includes(userRole));
 
+  // Trava o scroll do fundo quando o menu está aberto
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
@@ -57,11 +62,13 @@ export function MobileSidebar({ userProfile, boards }: MobileSidebarProps) {
         <Menu size={20} />
       </button>
 
+      {/* Overlay de fundo */}
       <div className={cn(
         "fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity duration-300 md:hidden",
         isOpen ? "opacity-100 visible" : "opacity-0 invisible"
       )} onClick={() => setIsOpen(false)} />
 
+      {/* Menu Lateral Deslizante */}
       <div className={cn(
         "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-zinc-950 border-r border-zinc-800/80 transition-transform duration-300 ease-out md:hidden shadow-2xl",
         isOpen ? "translate-x-0" : "-translate-x-full"
@@ -78,7 +85,8 @@ export function MobileSidebar({ userProfile, boards }: MobileSidebarProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col py-6">
+        <div className="flex-1 overflow-y-auto py-6">
+          {/* Links Principais */}
           <div className="px-4 space-y-1 mb-6">
             <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Principal</p>
             {visibleLinks.map((link) => {
@@ -102,12 +110,13 @@ export function MobileSidebar({ userProfile, boards }: MobileSidebarProps) {
             })}
           </div>
 
+          {/* Seção de Quadros */}
           <div className="px-4 space-y-1 flex-1">
             <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Meus Quadros</p>
-            {boards.length === 0 ? (
+            {boards?.length === 0 ? (
               <p className="px-4 py-2 text-xs text-zinc-600 italic">Nenhum quadro criado.</p>
             ) : (
-              boards.map((board) => {
+              boards?.map((board) => {
                 const href = `/boards/${board.id}`;
                 const isActive = pathname === href;
                 return (
@@ -130,6 +139,7 @@ export function MobileSidebar({ userProfile, boards }: MobileSidebarProps) {
           </div>
         </div>
 
+        {/* Rodapé com Perfil e Logout */}
         <div className="border-t border-zinc-800/50 p-4 bg-zinc-950/80 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3 rounded-xl bg-zinc-900/40 p-3 mb-2 border border-zinc-800/50">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm uppercase shadow-sm">
