@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { KanbanBoard } from "./KanbanBoard";
 import { TableBoard } from "./TableBoard";
 import { GanttBoard } from "./GanttBoard";
-import { LayoutGrid, List, Calendar, Loader2, RefreshCw } from "lucide-react";
+import { LayoutGrid, List, Calendar, Loader2, RefreshCw, ShieldCheck, Zap, AlertCircle } from "lucide-react";
 import { CreateTaskModal } from "./CreateTaskModal";
 import { cn } from "@/utils/cn";
 import { createClient } from "@/utils/supabase/client";
@@ -58,6 +58,24 @@ export function BoardClient({
     }
   }, [board.id, supabase, router]);
 
+  // Sincronização Real-time (Padrão Internacional)
+  useEffect(() => {
+    const channel = supabase
+      .channel(`board-changes-${board.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `board_id=eq.${board.id}` },
+        () => {
+          refreshTasks(); // Recarrega os dados quando qualquer tarefa do board mudar
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [board.id, supabase, refreshTasks]);
+
   const handleTaskCreated = (newTask: any) => {
     // Ao criar, recarregamos para pegar as relações (profiles, clients) corretamente do banco
     refreshTasks();
@@ -72,8 +90,54 @@ export function BoardClient({
     setTasks(prev => prev.filter((t) => t.id !== taskId));
   };
 
+  // Cálculo do Índice de Resiliência (ORI)
+  const boardStats = useMemo(() => {
+    if (!tasks || tasks.length === 0) return { score: 100, silos: 0, debt: 0 };
+    
+    const silos = tasks.filter(t => t.assigned_to && t.task_collaborators?.length === 0 && t.status !== 'done').length;
+    const debt = tasks.filter(t => (t.estimated_minutes || 0) > 0 && (t.total_minutes_spent || 0) > (t.estimated_minutes || 0) * 1.25).length;
+    
+    // O score diminui conforme os silos e dívidas aumentam
+    const score = Math.max(0, 100 - (silos * 10) - (debt * 5));
+    return { score, silos, debt };
+  }, [tasks]);
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      {/* BARRA DE RESILIÊNCIA OPERACIONAL (FUSÃO ENTERPRISE 2.0) */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+          <div className={cn(
+            "p-3 rounded-lg border",
+            boardStats.score > 80 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : boardStats.score > 50 ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-red-500/10 border-red-500/20 text-red-500"
+          )}>
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Operational Resilience Index (ORI)</p>
+            <p className="text-xl font-black text-white">{boardStats.score}<span className="text-zinc-600 text-sm ml-1">%</span></p>
+          </div>
+        </div>
+        <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg">
+            <AlertCircle size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Silos de Conhecimento</p>
+            <p className="text-xl font-bold text-white">{boardStats.silos} <span className="text-xs text-zinc-500 font-normal">cards em risco</span></p>
+          </div>
+        </div>
+        <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg">
+            <Zap size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Dívida Cognitiva</p>
+            <p className="text-xl font-bold text-white">{boardStats.debt} <span className="text-xs text-zinc-500 font-normal">atividades estouradas</span></p>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         
         {/* Lado Esquerdo: Seletor de Visualização e Status */}

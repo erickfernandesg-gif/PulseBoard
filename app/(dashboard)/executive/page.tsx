@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { cn } from "@/utils/cn";
+import { ExecutiveFilter } from "@/components/ExecutiveFilter";
 
 // Forçamos renderização dinâmica para dados financeiros em tempo real
 export const dynamic = "force-dynamic";
@@ -21,12 +23,23 @@ type TaskRow = {
   board_id: string | null;
   client_id: string | null;
   assigned_to: string | null;
+  estimated_minutes: number | null;
+  status: string;
+  target_month: string | null;
 };
 
+// ✅ Tipo atualizado para suportar a junção de dados
 type TimeLogRow = {
   task_id: string;
   user_id: string | null;
   minutes: number | string | null;
+  log_date: string;
+  tasks: {
+    board_id: string | null;
+    client_id: string | null;
+    assigned_to: string | null;
+    target_month: string | null;
+  } | { board_id: string | null; client_id: string | null; assigned_to: string | null; target_month: string | null }[] | null;
 };
 
 type UserRateRow = {
@@ -36,10 +49,22 @@ type UserRateRow = {
 
 type ClientRow = { id: string; name: string };
 
+type ProfileRow = { id: string; full_name: string | null };
+
 type Metric = { name: string; minutes: number; cost: number };
 
-export default async function ExecutiveDashboard() {
+interface PageProps {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}
+
+export default async function ExecutiveDashboard({ searchParams }: PageProps) {
   const supabase = await createClient();
+  const { from, to } = await searchParams;
+
+  // ✅ Define o mês atual como padrão (Padrão ERP)
+  const currentMonth = new Date().toISOString().slice(0, 7); // Ex: "2024-05"
+  const fromMonth = from || currentMonth;
+  const toMonth = to || currentMonth;
 
   // 1. Verificação de Autenticação e Segurança (Acesso Restrito)
   const {
@@ -73,15 +98,41 @@ export default async function ExecutiveDashboard() {
     );
   }
 
-  // 2. Busca Paralela de Alta Velocidade (Incluindo Clientes!)
-  const [boardsRes, tasksRes, timeLogsRes, userRatesRes, clientsRes] =
+  // 2. Busca Paralela de Alta Velocidade
+  // ✅ ALTERAÇÃO SÊNIOR: Forçamos o join com !inner para permitir o filtro por coluna da tabela relacionada.
+  let timeLogsQuery = supabase.from("time_logs").select(`
+    task_id,
+    user_id, 
+    minutes, 
+    log_date,
+    tasks!inner (
+      board_id,
+      client_id,
+      assigned_to,
+      target_month
+    )
+  `, { count: 'exact' });
+
+  // ✅ NOVA REGRA DE CICLO: O custo agora segue o target_month da tarefa.
+  // Se você filtrar Maio, verá todos os logs de tarefas do ciclo de Maio, 
+  // independente se o log foi feito em Abril ou Junho.
+  timeLogsQuery = timeLogsQuery.gte("tasks.target_month", fromMonth).lte("tasks.target_month", toMonth);
+
+  // ✅ Regra de Escopo: O Workload é baseado no planejamento (target_month)
+  let tasksQuery = supabase
+    .from("tasks")
+    .select("id, board_id, client_id, assigned_to, estimated_minutes, status, target_month");
+  
+  tasksQuery = tasksQuery.gte("target_month", fromMonth).lte("target_month", toMonth);
+
+  const [boardsRes, tasksRes, timeLogsRes, userRatesRes, clientsRes, profilesRes] =
     await Promise.all([
       supabase.from("boards").select("id, name"),
-      // ✅ IMPORTANTE: inclui assigned_to para sabermos quem é o "funcionário da tarefa"
-      supabase.from("tasks").select("id, board_id, client_id, assigned_to"),
-      supabase.from("time_logs").select("task_id, user_id, minutes"),
+      tasksQuery,
+      timeLogsQuery,
       supabase.from("user_rates").select("user_id, hourly_rate"),
-      supabase.from("clients").select("id, name"),
+      supabase.from("clients").select("id, name").order("name"),
+      supabase.from("profiles").select("id, full_name"),
     ]);
 
   // Não engolir erro (principalmente em cenário RLS)
@@ -95,26 +146,27 @@ export default async function ExecutiveDashboard() {
     console.error("[ExecutiveDashboard] user_rates error:", userRatesRes.error);
   if (clientsRes.error)
     console.error("[ExecutiveDashboard] clients error:", clientsRes.error);
+  if (profilesRes.error)
+    console.error("[ExecutiveDashboard] profiles error:", profilesRes.error);
 
   const boards = (boardsRes.data ?? []) as BoardRow[];
   const tasks = (tasksRes.data ?? []) as TaskRow[];
-  const timeLogs = (timeLogsRes.data ?? []) as TimeLogRow[];
+  const timeLogs = (timeLogsRes.data ?? []) as unknown as TimeLogRow[];
   const userRates = (userRatesRes.data ?? []) as UserRateRow[];
   const clients = (clientsRes.data ?? []) as ClientRow[];
+  const allProfiles = (profilesRes.data ?? []) as ProfileRow[];
 
   // Helpers robustos
   const normId = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 
   // ✅ Converte números vindo como "18,18" ou "18.18" (pt-BR)
   const toRateNumber = (v: unknown) => {
-    if (v === null || v === undefined) return 0;
     if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-
     const s = String(v).trim();
     if (!s) return 0;
 
-    // remove separador de milhar "." e troca decimal "," por "."
-    const normalized = s.replace(/\./g, "").replace(",", ".");
+    // Se tem vírgula, tratamos como formato PT-BR (1.234,56). Caso contrário, padrão SQL (1234.56)
+    const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
     const n = Number.parseFloat(normalized);
     return Number.isFinite(n) ? n : 0;
   };
@@ -136,17 +188,14 @@ export default async function ExecutiveDashboard() {
       .map((r) => [normId(r.user_id), toRateNumber(r.hourly_rate)])
   );
 
-  const taskMap = new Map<
-    string,
-    { board_id: string | null; client_id: string | null; assigned_to: string | null }
-  >((tasks ?? []).map((t) => [
-      normId(t.id),
-      { board_id: t.board_id, client_id: t.client_id, assigned_to: t.assigned_to },
-    ]));
+  const profilesNameMap = new Map<string, string>(
+    allProfiles.map((p) => [normId(p.id), p.full_name ?? "Colaborador Externo"])
+  );
 
   // Agregadores
   const boardMetricsMap = new Map<string, Metric>();
   const clientMetricsMap = new Map<string, Metric>();
+  const workloadMap = new Map<string, { name: string; estimated: number }>();
 
   boards?.forEach((b) =>
     boardMetricsMap.set(normId(b.id), { name: b.name, minutes: 0, cost: 0 })
@@ -162,6 +211,22 @@ export default async function ExecutiveDashboard() {
     cost: 0,
   });
 
+  // Inicializa mapa de carga com perfis conhecidos (via rates ou assigned tasks)
+  tasks.forEach(t => {
+    if (t.assigned_to) {
+      const uid = normId(t.assigned_to);
+
+      if (!workloadMap.has(uid)) {
+        const userName = profilesNameMap.get(uid) || "Membro da Equipe";
+        workloadMap.set(uid, { name: userName, estimated: 0 });
+      }
+      // BI Insight: Somente o esforço "pendente" ou "em andamento" entra no Workload do ciclo
+      if (t.status !== 'done' && t.status !== 'concluído') {
+        workloadMap.get(uid)!.estimated += (t.estimated_minutes || 0);
+      }
+    }
+  });
+
   let totalGlobalCost = 0;
   let totalGlobalMinutes = 0;
   const uniqueUsersLoggingTime = new Set<string>();
@@ -174,12 +239,15 @@ export default async function ExecutiveDashboard() {
   timeLogs?.forEach((log) => {
     const rawMinutes = log.minutes;
     const minutes = toMinutesNumber(rawMinutes);
-    const taskId = normId(log.task_id);
-    const taskInfo = taskMap.get(taskId);
+    
+    // ✅ NORMALIZAÇÃO SÊNIOR: Supabase pode retornar objeto ou array em joins.
+    // Garantimos o acesso seguro ao board_id e client_id.
+    const rawTaskData = (log as any).tasks;
+    const taskInfo = Array.isArray(rawTaskData) ? rawTaskData[0] : rawTaskData;
 
     // 🔴 A CORREÇÃO SÊNIOR:
-    // Em dashboards executivos, o custo deve seguir o dono da entrega (assigned_to).
-    // Se log.user_id for do admin, mas a tarefa é do "João", usamos a taxa do "João".
+    // O custo deve seguir o dono da entrega (assigned_to). Se um gestor lança horas para um
+    // colaborador, o custo deve refletir a taxa de quem é o responsável pela tarefa.
     const assignedId = normId(taskInfo?.assigned_to);
     const logUserId = normId(log.user_id);
     const workerId = assignedId || logUserId;
@@ -190,8 +258,7 @@ export default async function ExecutiveDashboard() {
 
     // Busca a taxa do funcionário real
     let userRate = workerId ? ratesMap.get(workerId) ?? 0 : 0;
-
-    // Caso o funcionário não tenha taxa, tentamos o fallback do logUserId
+    // Fallback: Se o responsável não tem taxa, usa a taxa de quem lançou o log
     // mas evitamos usar a taxa do admin se houver outra opção.
     if ((userRate === undefined || userRate === 0) && logUserId) {
       userRate = ratesMap.get(logUserId) ?? 0;
@@ -201,7 +268,7 @@ export default async function ExecutiveDashboard() {
       logsWithoutRate++;
     }
 
-    const costForThisLog = (minutes / 60) * (userRate ?? 0);
+    const costForThisLog = (minutes / 60) * userRate;
 
     // Globais
     totalGlobalMinutes += minutes;
@@ -210,9 +277,9 @@ export default async function ExecutiveDashboard() {
     // Contabiliza o funcionário real na equipe alocada
     if (workerId) uniqueUsersLoggingTime.add(workerId);
 
-    // Agrega no Projeto (Board)
-    if (taskInfo?.board_id) {
-      const boardKey = normId(taskInfo.board_id);
+    // Agrega no Projeto (Board) - Só se o board existir e o taskInfo for válido
+    const boardKey = taskInfo?.board_id ? normId(taskInfo.board_id) : null;
+    if (boardKey) {
       const bMetric = boardMetricsMap.get(boardKey);
       if (bMetric) {
         bMetric.minutes += minutes;
@@ -229,15 +296,6 @@ export default async function ExecutiveDashboard() {
     }
   });
 
-  console.log("[ExecutiveDashboard] rows:", {
-    boards: boards.length,
-    tasks: tasks.length,
-    timeLogs: timeLogs.length,
-    userRates: userRates.length,
-    clients: clients.length,
-    logsWithoutRate,
-    logsUserMismatch,
-  });
 
   // Converte Maps em Arrays Ordenados por Custo
   const topBoards = Array.from(boardMetricsMap.values())
@@ -248,9 +306,21 @@ export default async function ExecutiveDashboard() {
     .filter((c) => c.cost > 0 || c.minutes > 0)
     .sort((a, b) => b.cost - a.cost);
 
+  const teamWorkload = Array.from(workloadMap.entries()).map(([id, data]) => {
+    const hours = data.estimated / 60;
+    const capacity = 160; // Padrão CLT/Internacional: 40h semanais
+    const percentage = Math.round((hours / capacity) * 100);
+    return { id, name: data.name, percentage, hours };
+  }).filter(m => m.hours > 0) // Remove quem não tem nada atribuído para limpar a UI
+    .sort((a, b) => b.percentage - a.percentage);
+
   // BI KPIs Globais
   const totalGlobalHours = totalGlobalMinutes / 60;
   const averageHourlyCost = totalGlobalHours > 0 ? totalGlobalCost / totalGlobalHours : 0;
+
+  // Métrica de Saúde Operacional (Segurança contra divisão por zero)
+  const totalCapacity = uniqueUsersLoggingTime.size * 160;
+  const operationalHealth = totalCapacity > 0 ? (totalGlobalHours / totalCapacity) * 100 : 0;
 
   // Função Helpers (UI)
   const formatTime = (totalMins: number) => {
@@ -268,14 +338,19 @@ export default async function ExecutiveDashboard() {
 
   return (
     <div className="mx-auto max-w-7xl pb-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-          <TrendingUp className="text-emerald-500" />
-          Painel Financeiro & Burn Rate
-        </h1>
-        <p className="text-sm text-zinc-400 mt-1">
-          Visão confidencial de rentabilidade por projeto e custo de aquisição/manutenção de clientes.
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <TrendingUp className="text-emerald-500" />
+            Painel Financeiro & Burn Rate
+          </h1>
+          <p className="text-sm text-zinc-400 mt-1">
+            Visão confidencial de rentabilidade por projeto e custo de manutenção de clientes.
+          </p>
+        </div>
+
+        {/* Filtro de Período (UI Padrão Internacional) */}
+        <ExecutiveFilter fromMonth={fromMonth} toMonth={toMonth} />
       </div>
 
       {/* KPIs Globais */}
@@ -290,8 +365,11 @@ export default async function ExecutiveDashboard() {
             {formatCurrency(totalGlobalCost)}
           </p>
           <div className="flex items-center gap-2 mt-2 relative z-10">
-            <span className="text-[10px] text-zinc-400 font-bold tracking-widest uppercase bg-zinc-800 px-2 py-1 rounded">
-              Média: {formatCurrency(averageHourlyCost)} / hora
+            <span className={cn(
+              "text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded",
+              averageHourlyCost > 150 ? "bg-red-500/10 text-red-400" : "bg-zinc-800 text-zinc-400"
+            )}>
+              Burn Rate: {formatCurrency(averageHourlyCost)}/h
             </span>
           </div>
         </div>
@@ -321,6 +399,51 @@ export default async function ExecutiveDashboard() {
           </div>
           <p className="text-3xl font-bold text-white">{uniqueUsersLoggingTime.size}</p>
           <p className="text-xs text-zinc-500 mt-1">Colaboradores ativos nos projetos</p>
+        </div>
+      </div>
+
+      {/* MONITOR DE CARGA E SAÚDE DO TIME (WORKLOAD) */}
+      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <Users size={18} className="text-blue-400" />
+              Capacidade & Resiliência do Time
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1">Estimativa de ocupação baseada em cards ativos (Limite: 160h/mês).</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {teamWorkload.map((member) => (
+            <div key={member.id} className="p-4 rounded-lg bg-zinc-900/40 border border-zinc-800">
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-xs font-bold text-white uppercase tracking-tighter truncate max-w-[180px]">
+                  {member.name}
+                </span>
+                <span className={cn(
+                  "text-sm font-black",
+                  member.percentage > 100 ? "text-red-500" : member.percentage > 80 ? "text-amber-500" : "text-emerald-500"
+                )}>
+                  {member.percentage}%
+                </span>
+              </div>
+              <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                  className={cn(
+                    "h-full transition-all duration-1000",
+                    member.percentage > 100 ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : member.percentage > 80 ? "bg-amber-500" : "bg-emerald-500"
+                  )}
+                  style={{ width: `${Math.min(member.percentage, 100)}%` }}
+                />
+              </div>
+              {member.percentage > 100 && (
+                <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">
+                  <AlertTriangle size={12} /> ALERTA DE BURNOUT: Sobrecarga Detectada
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 

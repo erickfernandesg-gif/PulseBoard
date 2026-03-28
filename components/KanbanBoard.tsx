@@ -8,14 +8,23 @@ import { toast } from "sonner";
 import { Filter, Inbox, CalendarDays, Layers, User } from "lucide-react";
 import { FullTaskData } from "./KanbanTask"; // Import the shared Task type
 
+interface KanbanBoardProps {
+  board: { id: string; settings?: { id: string; title: string }[] };
+  tasks: FullTaskData[];
+  setTasks: React.Dispatch<React.SetStateAction<FullTaskData[]>>;
+  profiles: { id: string; full_name: string; avatar_url: string | null }[];
+  onTaskUpdated?: () => void;
+  onTaskDeleted?: (taskId: string) => void;
+}
+
 export function KanbanBoard({
   board,
   tasks,
   setTasks,
-  profiles, // Lista de todos os membros do time
+  profiles,
   onTaskUpdated,
   onTaskDeleted,
-}: any) {
+}: KanbanBoardProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [filterUserId, setFilterUserId] = useState<string>("all");
@@ -33,7 +42,7 @@ export function KanbanBoard({
   // 1. Definição das Colunas (Agora com a Caixa de Entrada)
   const COLUMNS = useMemo(() => {
     // Se o usuário customizou as colunas no banco, usamos elas.
-    if (board?.settings && Array.isArray(board.settings) && board.settings.length > 0) {
+    if (board?.settings && Array.isArray(board.settings) && (board.settings as any[]).length > 0) {
       // Garante que a coluna backlog exista, se não existir, adiciona no início
       const hasBacklog = board.settings.some((c: any) => c.id === "backlog");
       if (!hasBacklog) return [{ id: "backlog", title: "Caixa de Entrada" }, ...board.settings];
@@ -87,24 +96,53 @@ export function KanbanBoard({
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
     const newStatus = destination.droppableId;
-    
-    // Atualização Otimista
-    setTasks((prev: FullTaskData[]) => { // Use FullTaskData[]
-      const updated = [...prev];
-      const taskIndex = updated.findIndex((t: FullTaskData) => t.id === draggableId); // Use FullTaskData
-      if (taskIndex > -1) {
-        updated[taskIndex] = { ...updated[taskIndex], status: newStatus };
-      }
-      return updated;
-    });
+    const movedTask = tasks.find((t) => t.id === draggableId);
+    if (!movedTask) return;
 
-    if (source.droppableId === destination.droppableId) return;
+    // 1. Identificar vizinhos na lista FILTRADA para calcular a nova posição
+    let prevTask, nextTask;
+    const destColumnTasks = tasks.filter(t => t.status === newStatus).sort((a,b) => (a.position_index || 0) - (b.position_index || 0));
+    
+    if (source.droppableId === newStatus) {
+      const colItems = [...destColumnTasks];
+      const [removed] = colItems.splice(source.index, 1);
+      colItems.splice(destination.index, 0, removed);
+      prevTask = colItems[destination.index - 1];
+      nextTask = colItems[destination.index + 1];
+    } else {
+      prevTask = destColumnTasks[destination.index - 1];
+      nextTask = destColumnTasks[destination.index];
+    }
+
+    // 2. Algoritmo de Posicionamento (Evita colisões de INTEGER)
+    let newPos;
+    const prevIdx = prevTask ? prevTask.position_index : null;
+    const nextIdx = nextTask ? nextTask.position_index : null;
+
+    // Usamos um gap de 16384 (2^14) para permitir muitas inserções intermediárias
+    if (prevIdx === null && nextIdx === null) newPos = 16384;
+    else if (prevIdx === null) newPos = nextIdx! - 16384;
+    else if (nextIdx === null) newPos = prevIdx! + 16384;
+    else newPos = Math.floor((prevIdx! + nextIdx!) / 2);
+
+    // Tratamento de colisão: se não houver espaço entre os inteiros
+    if (newPos === prevIdx) newPos = prevIdx! + 1;
+
+    // 3. Atualização Otimista Imediata
+    const updatedTasks = tasks.map(t => 
+      t.id === draggableId ? { ...t, status: newStatus, position_index: newPos } : t
+    ).sort((a, b) => (a.position_index || 0) - (b.position_index || 0));
+
+    setTasks(updatedTasks);
 
     // Salva no banco de dados
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          position_index: newPos 
+        })
         .eq("id", draggableId);
 
       if (error) throw error;
@@ -183,9 +221,9 @@ export function KanbanBoard({
       </div>
 
       {/* QUADRO KANBAN */}
-      <div className="flex-1 overflow-x-auto p-4 custom-scrollbar">
+      <div className="flex-1 overflow-x-auto p-4 custom-scrollbar select-none">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-6 min-w-max pb-4 h-full items-start">
+          <div className="flex gap-6 min-w-max pb-4 h-full items-start transform-none">
             {COLUMNS.map((col: any) => {
               const columnTasks = filteredTasks.filter((t: FullTaskData) => t.status === col.id); // Use FullTaskData
               return (

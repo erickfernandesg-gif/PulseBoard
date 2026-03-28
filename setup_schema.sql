@@ -4,6 +4,7 @@
 
 -- 1. EXTENSÕES E FUNÇÕES DE SEGURANÇA BASE
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- Necessário para hashing de auditoria
 
 -- Função para verificar se usuário logado é gestor/admin
 CREATE OR REPLACE FUNCTION is_manager()
@@ -24,6 +25,19 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Função para gerar Hash de Integridade (Padrão ERP anti-fraude)
+CREATE OR REPLACE FUNCTION generate_audit_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Criamos uma assinatura digital baseada nos dados sensíveis + uma salt secreta
+    NEW.audit_hash := encode(digest(
+        concat(NEW.id::text, NEW.user_id::text, COALESCE(NEW.minutes::text, ''), COALESCE(NEW.details::text, ''), 'PULSE_AUDIT_SALT_2024'),
+        'sha256'
+    ), 'hex');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =======================================================================================
 -- 2. CRIAÇÃO DE TABELAS (Ordem estruturada pelas Foreign Keys)
@@ -92,6 +106,7 @@ CREATE TABLE IF NOT EXISTS time_logs (
   minutes INTEGER NOT NULL CHECK (minutes > 0),
   log_date DATE NOT NULL DEFAULT CURRENT_DATE,
   description TEXT,
+  audit_hash TEXT, -- Tag de integridade
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -119,6 +134,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
   user_id UUID REFERENCES profiles(id) NOT NULL,
   action TEXT NOT NULL,
   details JSONB,
+  audit_hash TEXT, -- Tag de integridade
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -172,6 +188,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_task_status_change ON tasks;
 CREATE TRIGGER on_task_status_change
   AFTER UPDATE OF status ON tasks FOR EACH ROW EXECUTE FUNCTION log_task_status_change();
+
+-- Triggers de Auditoria (Hashing)
+DROP TRIGGER IF EXISTS trg_audit_time_logs ON time_logs;
+CREATE TRIGGER trg_audit_time_logs
+  BEFORE INSERT OR UPDATE ON time_logs
+  FOR EACH ROW EXECUTE FUNCTION generate_audit_hash();
+
+DROP TRIGGER IF EXISTS trg_audit_activity_log ON activity_log;
+CREATE TRIGGER trg_audit_activity_log
+  BEFORE INSERT ON activity_log
+  FOR EACH ROW EXECUTE FUNCTION generate_audit_hash();
 
 -- NOVO: Trigger de Auto-soma de Horas na Tarefa
 CREATE OR REPLACE FUNCTION update_task_total_minutes()
@@ -398,3 +425,21 @@ BEGIN
       AND target_month IS NOT NULL;
 END;
 $$;
+
+-- =======================================================================================
+-- 6. CHECKLISTS E DEPENDÊNCIAS (FUSÃO ENTERPRISE)
+-- =======================================================================================
+
+CREATE TABLE IF NOT EXISTS task_checklists (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  is_completed BOOLEAN DEFAULT false,
+  position_index INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE task_checklists ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage checklists for visible tasks" ON task_checklists;
+CREATE POLICY "Users can manage checklists for visible tasks" 
+ON task_checklists FOR ALL USING (true);

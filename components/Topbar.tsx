@@ -138,10 +138,15 @@ export function Topbar({ user }: TopbarProps) {
           </div>
           <input
             type="text"
-            className="block w-full rounded-lg border border-zinc-800 bg-zinc-900/50 py-2 pl-10 pr-3 text-sm text-zinc-200 placeholder-zinc-500 outline-none transition-all focus:border-indigo-500/50 focus:bg-zinc-900 focus:ring-1 focus:ring-indigo-500/50"
-            placeholder="Pesquisar tarefas ou quadros (Cmd+K)"
+            className="block w-full rounded-lg border border-zinc-800 bg-zinc-900/40 py-2 pl-10 pr-12 text-sm text-zinc-200 placeholder-zinc-500 outline-none transition-all focus:border-indigo-500/50 focus:bg-zinc-900 focus:ring-1 focus:ring-indigo-500/50"
+            placeholder="Busca inteligente..."
             disabled
           />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-1.5 font-mono text-[10px] font-medium text-zinc-500">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </div>
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2, Maximize2, Minimize2, Edit2, ChevronRight } from "lucide-react";
+import { X, MessageSquare, Calendar, Save, Loader2, Trash2, Clock, Plus, UserPlus, Zap, CalendarDays, AlertOctagon, Building2, Maximize2, Minimize2, Edit2, ChevronRight, CheckSquare, ListTodo } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
@@ -42,6 +42,14 @@ interface TimeLog {
   profiles: Pick<Profile, 'full_name'> | null;
 }
 
+interface ChecklistItem {
+  id: string;
+  task_id: string;
+  title: string;
+  is_completed: boolean;
+  position_index: number;
+}
+
 type Task = FullTaskData; // Use the unified Task type
 
 interface TaskDetailsModalProps {
@@ -72,6 +80,10 @@ export function TaskDetailsModal({
   const [editedCommentContent, setEditedCommentContent] = useState("");
   const [isSubmittingChat, setIsSubmittingChat] = useState(false);
   
+  // Estados de Checklist
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
+
   // Referência para o Auto-scroll do Chat
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -135,7 +147,7 @@ export function TaskDetailsModal({
 
   // Carregar dados iniciais
   const fetchData = useCallback(async () => {
-    const [profRes, commRes, collRes, timeRes, clientsRes] = await Promise.all([
+    const [profRes, commRes, collRes, timeRes, clientsRes, checkRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name"),
       supabase.from("task_comments")
         .select("id, task_id, user_id, content, created_at, profiles(full_name)") // Seleção explícita
@@ -148,7 +160,11 @@ export function TaskDetailsModal({
         .select("*, profiles(full_name)")
         .eq("task_id", initialTask.id)
         .order("created_at", { ascending: false }),
-      supabase.from("clients").select("id, name").order("name") // Busca os Clientes
+      supabase.from("clients").select("id, name").order("name"),
+      supabase.from("task_checklists")
+        .select("*")
+        .eq("task_id", initialTask.id)
+        .order("position_index", { ascending: true })
     ]);
 
     if (profRes.data) setProfiles(profRes.data);
@@ -169,6 +185,7 @@ export function TaskDetailsModal({
       setTimeLogs(formatted as unknown as TimeLog[]);
     }
     if (clientsRes.data) setClients(clientsRes.data);
+    if (checkRes.data) setChecklist(checkRes.data);
   }, [supabase, initialTask.id]);
 
   useEffect(() => {
@@ -367,6 +384,35 @@ const handleUpdateComment = async (commentId: string) => {
       if (onTaskUpdated) onTaskUpdated(); 
     }
     setIsSubmittingTime(false);
+  };
+
+  // Funções de Checklist
+  const addChecklistItem = async () => {
+    if (!newChecklistItem.trim()) return;
+    const { data, error } = await supabase
+      .from("task_checklists")
+      .insert({
+        task_id: initialTask.id,
+        title: newChecklistItem,
+        position_index: checklist.length
+      })
+      .select()
+      .single();
+
+    if (!error) {
+      setChecklist([...checklist, data]);
+      setNewChecklistItem("");
+    }
+  };
+
+  const toggleChecklistItem = async (id: string, currentStatus: boolean) => {
+    setChecklist(prev => prev.map(item => item.id === id ? { ...item, is_completed: !currentStatus } : item));
+    await supabase.from("task_checklists").update({ is_completed: !currentStatus }).eq("id", id);
+  };
+
+  const deleteChecklistItem = async (id: string) => {
+    setChecklist(prev => prev.filter(item => item.id !== id));
+    await supabase.from("task_checklists").delete().eq("id", id);
   };
 
   const applyQuickTime = (totalMins: number) => {
