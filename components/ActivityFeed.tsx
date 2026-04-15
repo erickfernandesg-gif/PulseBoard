@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Activity, ArrowRight, Loader2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertOctagon, CheckCircle2 } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -59,6 +59,19 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
     };
   }, [boardId, supabase]);
 
+  // Agrupar logs por data para melhor escaneabilidade
+  const groupedLogs = logs.reduce((acc: any, log: any) => {
+    const date = new Date(log.created_at);
+    let label = format(date, "dd 'de' MMMM", { locale: ptBR });
+    
+    if (isToday(date)) label = "Hoje";
+    else if (isYesterday(date)) label = "Ontem";
+
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(log);
+    return acc;
+  }, {});
+
   // Função para traduzir a "Ação" da base de dados para texto humano
   const renderLogAction = (log: any) => {
     const userName = log.profiles?.full_name?.split(" ")[0] || "Alguém";
@@ -109,23 +122,31 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
   }
 
   return (
-    <div className="space-y-4">
-      {logs.map((log) => (
-        <div key={log.id} className="flex gap-3 text-sm">
-          <div className={cn(
-            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
-            log.action === "task_blocked" ? "bg-red-500/10 border-red-500/20" : "bg-zinc-800 border-zinc-700"
-          )}>
-            {getIcon(log.action)}
+    <div className="space-y-8">
+      {Object.entries(groupedLogs).map(([dateLabel, dayLogs]: [string, any]) => (
+        <div key={dateLabel} className="space-y-4">
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 whitespace-nowrap">{dateLabel}</span>
+            <div className="h-px w-full bg-zinc-800/50"></div>
           </div>
-          <div className="flex-1 space-y-1">
-            <p className="text-zinc-300 leading-snug">
-              {renderLogAction(log)}
-            </p>
-            <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">
-              {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: ptBR })}
-            </p>
-          </div>
+          {dayLogs.map((log: any) => (
+            <div key={log.id} className="flex gap-3 text-sm group">
+              <div className={cn(
+                "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
+                log.action === "task_blocked" ? "bg-red-500/10 border-red-500/20" : "bg-zinc-800 border-zinc-700 group-hover:border-zinc-600"
+              )}>
+                {getIcon(log.action)}
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-zinc-300 leading-snug">
+                  {renderLogAction(log)}
+                </p>
+                <p className="text-[10px] text-zinc-500 font-medium">
+                  {format(new Date(log.created_at), "HH:mm")} • {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: ptBR })}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       ))}
     </div>

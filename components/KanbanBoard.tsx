@@ -5,7 +5,7 @@ import { DragDropContext } from "@hello-pangea/dnd";
 import { KanbanColumn } from "./KanbanColumn";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { Filter, Inbox, CalendarDays, Layers, User } from "lucide-react";
+import { Filter, Inbox, CalendarDays, Layers, User, Search } from "lucide-react";
 import { FullTaskData } from "./KanbanTask"; // Import the shared Task type
 
 interface KanbanBoardProps {
@@ -26,6 +26,7 @@ export function KanbanBoard({
   onTaskDeleted,
 }: KanbanBoardProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [filterUserId, setFilterUserId] = useState<string>("all");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -98,12 +99,15 @@ export function KanbanBoard({
   const filteredTasks = useMemo(() => {
     return tasks.filter((t: FullTaskData) => {
       const matchMonth = selectedMonth === "all" || (selectedMonth === "inbox" ? !t.target_month : t.target_month === selectedMonth);
-      
       const isCollaborator = t.task_collaborators?.some((c) => c.user_id === filterUserId);
       const matchUser = filterUserId === "all" || t.assigned_to === filterUserId || isCollaborator;
-      return matchMonth && matchUser;
+      
+      const matchSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          t.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchMonth && matchUser && matchSearch;
     });
-  }, [tasks, selectedMonth, filterUserId]);
+  }, [tasks, selectedMonth, filterUserId, searchQuery]);
 
   // 4. Lógica de arrastar e soltar
   const handleDragEnd = async (result: any) => {
@@ -177,6 +181,21 @@ export function KanbanBoard({
       {/* BARRA DE FILTROS (A Mágica do SaaS) */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800/50 bg-zinc-900/30">
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+          {/* Campo de Pesquisa Rápida */}
+          <div className="relative mr-4 hidden md:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+            <input 
+              type="text"
+              placeholder="Pesquisar tarefas..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-64 rounded-lg bg-zinc-900/50 border border-zinc-800 pl-9 pr-4 text-xs text-white focus:border-indigo-500 outline-none transition-all placeholder:text-zinc-600"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-[10px] font-bold">ESC</button>
+            )}
+          </div>
+
         <span className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-1 mr-2">
           <Filter size={14} /> Visão:
         </span>
