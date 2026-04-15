@@ -287,7 +287,7 @@ BEGIN
     LOOP
         -- Log de execução de automação (para auditoria)
         INSERT INTO activity_log (task_id, board_id, user_id, action, details)
-        VALUES (NEW.id, NEW.board_id, COALESCE(auth.uid(), NEW.assigned_to), 'automation_fired', 
+        VALUES (NEW.id, NEW.board_id, auth.uid(), 'automation_fired', 
             jsonb_build_object('automation_title', 'Status Trigger', 'action', v_automation.action_type));
 
         -- Ação: Notificar (Exemplo: poderia inserir em uma tabela de notificações)
@@ -296,8 +296,8 @@ BEGIN
             NULL; 
         END IF;
 
-        -- ✅ CORREÇÃO SÊNIOR: Ajustado para 'assign_auto' para bater com o valor do seu Frontend (AutomationsPage.tsx)
-        IF v_automation.action_type = 'assign_auto' AND v_automation.action_payload IS NOT NULL THEN
+        -- Ação: Atribuir automaticamente (Exemplo: se action_payload tiver o ID do user)
+        IF v_automation.action_type = 'assign_user' AND v_automation.action_payload IS NOT NULL THEN
             NEW.assigned_to := v_automation.action_payload::uuid;
         END IF;
     END LOOP;
@@ -306,7 +306,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ✅ OTIMIZAÇÃO SÊNIOR: Adicionado WHEN para garantir que a automação só rode se o status REALMENTE mudar
+-- ✅ CORREÇÃO SÊNIOR: Comando unificado para evitar erro de sintaxe 42601
 DROP TRIGGER IF EXISTS trg_execute_automations ON tasks;
 CREATE TRIGGER trg_execute_automations
     BEFORE UPDATE OF status ON tasks
@@ -314,34 +314,8 @@ CREATE TRIGGER trg_execute_automations
     WHEN (OLD.status IS DISTINCT FROM NEW.status)
     EXECUTE FUNCTION execute_task_automations();
 
--- ✅ MELHORIA SÊNIOR: Trigger para Auditoria de Bloqueios
-CREATE OR REPLACE FUNCTION log_task_blocked_change()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF OLD.is_blocked IS DISTINCT FROM NEW.is_blocked THEN
-    INSERT INTO public.activity_log (task_id, board_id, user_id, action, details)
-    VALUES (NEW.id, NEW.board_id, auth.uid(), 
-      CASE WHEN NEW.is_blocked THEN 'task_blocked' ELSE 'task_unblocked' END,
-      jsonb_build_object(
-        'reason', NEW.blocker_reason, 
-        'task_title', NEW.title,
-        'blocked_by', auth.uid()
-      )
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER trg_log_task_blocked
-    AFTER UPDATE OF is_blocked ON tasks
-    FOR EACH ROW EXECUTE FUNCTION log_task_blocked_change();
-
--- ✅ CORREÇÃO SÊNIOR: Garantindo que cada coluna tenha seu comando ALTER TABLE correto
--- e tratando a existência prévia para evitar falhas em re-execução.
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false;
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS blocker_reason TEXT;
--- A coluna created_at já existe na definição inicial da tabela tasks, não é necessário o ADD COLUMN aqui.
+ALTER TABLE tasks ADD COLUMN is_blocked BOOLEAN DEFAULT false;
+ALTER TABLE tasks ADD COLUMN blocker_reason TEXT;
 
 -- Cria a tabela de Clientes
 CREATE TABLE IF NOT EXISTS clients (

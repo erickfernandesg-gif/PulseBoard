@@ -6,6 +6,7 @@ import { Activity, ArrowRight, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertOctagon, CheckCircle2 } from "lucide-react";
+import { cn } from "@/utils/cn";
 
 export function ActivityFeed({ boardId }: { boardId?: string }) {
   const [logs, setLogs] = useState<any[]>([]);
@@ -80,6 +81,12 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
         return (
           <span className="text-emerald-400">
             <span className="font-bold text-white">{userName}</span> desbloqueou a tarefa <span className="font-semibold">"{details.task_title}"</span>.
+          </span>
+        );
+      case "automation_fired":
+        return (
+          <span className="text-indigo-400">
+            <span className="font-bold text-white">🤖 PulseBot</span> executou: <span className="italic">"{details.automation_title}"</span> na tarefa <span className="font-semibold text-white">"{details.task_title}"</span>
           </span>
         );
       default:

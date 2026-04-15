@@ -54,6 +54,11 @@ export default function AutomationsPage() {
   const handleCreateAutomation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return toast.error("Dê um título para a automação.");
+    
+    // Validação Sênior: Impede erro de cast de UUID no banco de dados
+    if (actionType === "assign_auto" && !actionPayload) {
+      return toast.error("Selecione um responsável para esta automação.");
+    }
 
     setIsSaving(true);
     try {
