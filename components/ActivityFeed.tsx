@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Activity, ArrowRight, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AlertOctagon, CheckCircle2 } from "lucide-react";
 
 export function ActivityFeed({ boardId }: { boardId?: string }) {
   const [logs, setLogs] = useState<any[]>([]);
@@ -69,9 +70,27 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
             <span className="font-bold text-white">{userName}</span> moveu a tarefa <span className="font-semibold text-indigo-400">"{details.task_title}"</span> de <span className="text-zinc-500 line-through">{details.old_status}</span> para <span className="text-emerald-400 font-bold">{details.new_status}</span>
           </span>
         );
+      case "task_blocked":
+        return (
+          <span className="text-red-400">
+            <span className="font-bold text-white">{userName}</span> <strong>BLOQUEOU</strong> a tarefa <span className="font-semibold">"{details.task_title}"</span>: <span className="italic">"{details.reason}"</span>
+          </span>
+        );
+      case "task_unblocked":
+        return (
+          <span className="text-emerald-400">
+            <span className="font-bold text-white">{userName}</span> desbloqueou a tarefa <span className="font-semibold">"{details.task_title}"</span>.
+          </span>
+        );
       default:
         return <span><span className="font-bold text-white">{userName}</span> realizou uma ação.</span>;
     }
+  };
+
+  const getIcon = (action: string) => {
+    if (action === "task_blocked") return <AlertOctagon size={12} className="text-red-500" />;
+    if (action === "task_unblocked") return <CheckCircle2 size={12} className="text-emerald-500" />;
+    return <Activity size={12} className="text-zinc-400" />;
   };
 
   if (isLoading) {
@@ -86,8 +105,11 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
     <div className="space-y-4">
       {logs.map((log) => (
         <div key={log.id} className="flex gap-3 text-sm">
-          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700">
-            <Activity size={12} className="text-zinc-400" />
+          <div className={cn(
+            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+            log.action === "task_blocked" ? "bg-red-500/10 border-red-500/20" : "bg-zinc-800 border-zinc-700"
+          )}>
+            {getIcon(log.action)}
           </div>
           <div className="flex-1 space-y-1">
             <p className="text-zinc-300 leading-snug">

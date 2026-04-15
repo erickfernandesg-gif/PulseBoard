@@ -242,8 +242,12 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
     
     // ✅ NORMALIZAÇÃO SÊNIOR: Supabase pode retornar objeto ou array em joins.
     // Garantimos o acesso seguro ao board_id e client_id.
-    const rawTaskData = (log as any).tasks;
-    const taskInfo = Array.isArray(rawTaskData) ? rawTaskData[0] : rawTaskData;
+    // Melhoria: Usar cast explícito para evitar 'any' e tratar a estrutura de retorno do PostgREST
+    const taskInfo = log.tasks && !Array.isArray(log.tasks) 
+      ? log.tasks 
+      : (Array.isArray(log.tasks) ? log.tasks[0] : null);
+
+    if (!taskInfo) return;
 
     // 🔴 A CORREÇÃO SÊNIOR:
     // O custo deve seguir o dono da entrega (assigned_to). Se um gestor lança horas para um

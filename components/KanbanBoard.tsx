@@ -37,6 +37,23 @@ export function KanbanBoard({
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setCurrentUserId(data.user.id);
     });
+
+    // ✅ MELHORIA SÊNIOR: Inscrição em Tempo Real (Padrão Monday/Trello)
+    const channel = supabase
+      .channel(`board-changes-${board.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `board_id=eq.${board.id}` },
+        () => {
+          // Quando algo mudar no banco (por outro usuário ou automação), atualizamos a lista
+          if (onTaskUpdated) onTaskUpdated();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // 1. Definição das Colunas (Agora com a Caixa de Entrada)

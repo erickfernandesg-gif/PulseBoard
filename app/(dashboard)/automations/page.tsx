@@ -13,11 +13,13 @@ export default function AutomationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [profiles, setProfiles] = useState<any[]>([]);
 
   // Estados do Formulário do Modal
   const [title, setTitle] = useState("");
   const [triggerValue, setTriggerValue] = useState("done");
   const [actionType, setActionType] = useState("notify_manager");
+  const [actionPayload, setActionPayload] = useState("");
 
   const fetchAutomations = useCallback(async () => {
     setIsLoading(true);
@@ -35,8 +37,17 @@ export default function AutomationsPage() {
     setIsLoading(false);
   }, [supabase]);
 
+  const fetchProfiles = useCallback(async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .order("full_name");
+    if (data) setProfiles(data);
+  }, [supabase]);
+
   useEffect(() => {
     fetchAutomations();
+    fetchProfiles();
   }, [fetchAutomations]);
 
   // Função para criar nova automação
@@ -51,6 +62,7 @@ export default function AutomationsPage() {
         trigger_type: "status_change",
         trigger_value: triggerValue,
         action_type: actionType,
+        action_payload: actionType === "assign_auto" ? actionPayload : null,
         is_active: true
       }]);
 
@@ -63,6 +75,7 @@ export default function AutomationsPage() {
       setTitle("");
       setTriggerValue("done");
       setActionType("notify_manager");
+      setActionPayload("");
       
       fetchAutomations();
     } catch (error: any) {
@@ -106,7 +119,10 @@ export default function AutomationsPage() {
 
   // Funções auxiliares para renderizar texto amigável
   const getTriggerLabel = (value: string) => {
-    const labels: any = { "backlog": "Caixa de Entrada", "todo": "A Fazer", "in-progress": "Em Execução", "homologation": "Homologação", "done": "Concluído" };
+    const labels: any = { 
+      "backlog": "Caixa de Entrada", "todo": "A Fazer", "in-progress": "Em Execução", 
+      "homologation": "Homologação", "done": "Concluído", "task_blocked": "Tarefa for Bloqueada" 
+    };
     return labels[value] || value;
   };
 
@@ -242,6 +258,8 @@ export default function AutomationsPage() {
                       <option value="in-progress">Em Execução</option>
                       <option value="homologation">Homologação</option>
                       <option value="done">Concluído</option>
+                      <option disabled className="text-zinc-600">--- Impedimentos ---</option>
+                      <option value="task_blocked">Tarefa for Bloqueada</option>
                     </select>
                   </div>
                 </div>
@@ -259,6 +277,21 @@ export default function AutomationsPage() {
                     <option value="assign_auto">Atribuir a um responsável automaticamente</option>
                   </select>
                 </div>
+
+                {actionType === "assign_auto" && (
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Selecionar Responsável</label>
+                    <select 
+                      value={actionPayload}
+                      onChange={(e) => setActionPayload(e.target.value)}
+                      required
+                      className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                    >
+                      <option value="">Escolha um membro...</option>
+                      {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="mt-8 pt-6 border-t border-zinc-800 flex justify-end gap-3">
