@@ -176,34 +176,34 @@ export function KanbanBoard({
   if (!isMounted) return null;
 
   return (
-    <div className="flex flex-col h-full w-full bg-zinc-950/20">
+    <div className="flex flex-col h-full w-full bg-slate-50/50">
       
       {/* BARRA DE FILTROS (A Mágica do SaaS) */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800/50 bg-zinc-900/30">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
           {/* Campo de Pesquisa Rápida */}
           <div className="relative mr-4 hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <input 
               type="text"
               placeholder="Pesquisar tarefas..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-64 rounded-lg bg-zinc-900/50 border border-zinc-800 pl-9 pr-4 text-xs text-white focus:border-indigo-500 outline-none transition-all placeholder:text-zinc-600"
+              className="h-8 w-64 rounded-lg bg-slate-50 border border-slate-200 pl-9 pr-4 text-xs text-slate-700 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-[10px] font-bold">ESC</button>
+              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[10px] font-bold">ESC</button>
             )}
           </div>
 
-        <span className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-1 mr-2">
+        <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mr-2">
           <Filter size={14} /> Visão:
         </span>
         
         <button
           onClick={() => setSelectedMonth("all")}
           className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
-            selectedMonth === "all" ? "bg-indigo-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+            selectedMonth === "all" ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           <Layers size={14} /> Tudo
@@ -212,20 +212,20 @@ export function KanbanBoard({
         <button
           onClick={() => setSelectedMonth("inbox")}
           className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
-            selectedMonth === "inbox" ? "bg-amber-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+            selectedMonth === "inbox" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           <Inbox size={14} /> Sem Mês Definido (Triagem)
         </button>
 
-        <div className="h-4 w-px bg-zinc-700 mx-2"></div>
+        <div className="h-4 w-px bg-slate-200 mx-2"></div>
 
         {availableMonths.map(month => (
           <button
             key={month}
             onClick={() => setSelectedMonth(month)}
             className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
-              selectedMonth === month ? "bg-indigo-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+              selectedMonth === month ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <CalendarDays size={14} /> {formatMonthLabel(month)}
@@ -234,11 +234,11 @@ export function KanbanBoard({
         </div>
 
         {/* Filtro de Usuário (Lado Direito) */}
-        <div className="flex items-center gap-2 border-l border-zinc-800 pl-4 ml-4">
+        <div className="flex items-center gap-2 border-l border-slate-200 pl-4 ml-4">
           <button
             onClick={() => setFilterUserId(currentUserId || "all")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-              filterUserId === currentUserId ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/40" : "bg-zinc-800 text-zinc-500 hover:text-zinc-300"
+              filterUserId === currentUserId ? "bg-indigo-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <User size={14} /> Ver apenas eu
@@ -246,7 +246,7 @@ export function KanbanBoard({
           <select 
             value={filterUserId} 
             onChange={(e) => setFilterUserId(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-500"
+            className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-500"
           >
             <option value="all">Time Completo</option>
             {profiles.map((p: any) => (

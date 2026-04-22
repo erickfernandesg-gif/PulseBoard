@@ -8,6 +8,24 @@ import { cn } from "@/utils/cn";
 // Import the shared Task type
 import { FullTaskData } from "./KanbanTask";
 
+const STATUS_STYLES: Record<string, string> = {
+  backlog: "bg-slate-50 text-slate-600 border-slate-200",
+  todo: "bg-blue-50 text-blue-700 border-blue-200",
+  "in-progress": "bg-amber-50 text-amber-700 border-amber-200",
+  homologation: "bg-purple-50 text-purple-700 border-purple-200",
+  production: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  done: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  backlog: "Triagem",
+  todo: "A Fazer",
+  "in-progress": "Execução",
+  homologation: "Homologação",
+  production: "Produção",
+  done: "Concluído",
+};
+
 export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
   const [tasks, setTasks] = useState<FullTaskData[]>(initialTasks);
   const [startDate, setStartDate] = useState(() => {
@@ -78,43 +96,43 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
   };
 
   return (
-    <div className="flex h-full flex-col p-6 bg-zinc-950 text-zinc-200 overflow-hidden">
+    <div className="flex h-full flex-col p-6 bg-white text-slate-900 overflow-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 shadow-lg">
-            <Calendar className="h-6 w-6 text-indigo-400" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100 shadow-sm">
+            <Calendar className="h-6 w-6 text-indigo-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">Linha do Tempo Operacional</h3>
-            <p className="text-sm text-zinc-500">Gestão de prazos e carga de trabalho em tempo real</p>
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Linha do Tempo Operacional</h3>
+            <p className="text-sm text-slate-500">Gestão de prazos e carga de trabalho em tempo real</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-zinc-900/40 p-1.5 rounded-xl border border-zinc-800/50 backdrop-blur-md">
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
           <button 
             onClick={() => shiftDays(-7)}
-            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest"
+            className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-500 hover:text-slate-900 transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest"
           >
             <ChevronLeft className="h-4 w-4" /> Anterior
           </button>
-          <div className="w-px h-4 bg-zinc-700"></div>
+          <div className="w-px h-4 bg-slate-200"></div>
           <button 
             onClick={() => shiftDays(7)}
-            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest"
+            className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-500 hover:text-slate-900 transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest"
           >
             Próxima <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
-      
-      <div className="flex-1 w-full border border-zinc-800/80 rounded-2xl overflow-x-auto bg-zinc-900/20 custom-scrollbar shadow-2xl relative">
+
+      <div className="flex-1 w-full border border-slate-200 rounded-2xl overflow-x-auto bg-slate-50/50 custom-scrollbar shadow-sm relative">
         <div className="min-w-[1400px] h-full flex flex-col">
-          
+
           {/* Cabeçalho de Datas */}
-          <div className="flex border-b border-zinc-800/80 bg-zinc-950/80 text-xs text-zinc-400 sticky top-0 z-30 backdrop-blur-xl">
-            <div className="w-80 p-4 border-r border-zinc-800/80 flex-shrink-0 font-bold uppercase tracking-widest flex items-center justify-between bg-zinc-950">
+          <div className="flex border-b border-slate-200 bg-white/80 text-xs text-slate-500 sticky top-0 z-30 backdrop-blur-md">
+            <div className="w-80 p-4 border-r border-slate-200 flex-shrink-0 font-bold uppercase tracking-widest flex items-center justify-between bg-white">
               <span>Atividade & Cliente</span>
-              <Clock size={14} className="text-zinc-600" />
+              <Clock size={14} className="text-slate-300" />
             </div>
             <div className="flex-1 flex">
               {days.map((day, i) => {
@@ -122,11 +140,11 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
                 const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                 return (
                   <div key={i} className={cn(
-                    "flex-1 p-2 text-center border-r border-zinc-800/30 min-w-[46px] flex flex-col items-center justify-center transition-colors",
-                    isToday ? "bg-indigo-500/5 text-indigo-400" : isWeekend ? "bg-zinc-900/40 text-zinc-600" : ""
+                    "flex-1 p-2 text-center border-r border-slate-100 min-w-[46px] flex flex-col items-center justify-center transition-colors",
+                    isToday ? "bg-indigo-50 text-indigo-600" : isWeekend ? "bg-slate-100 text-slate-400" : ""
                   )}>
                     <span className="text-[9px] uppercase font-black tracking-tighter">{day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span>
-                    <span className={`font-bold mt-1 text-sm ${isToday ? "text-indigo-400" : ""}`}>{day.getDate()}</span>
+                    <span className={`font-bold mt-1 text-sm ${isToday ? "text-indigo-600" : ""}`}>{day.getDate()}</span>
                   </div>
                 )
               })}
@@ -134,7 +152,7 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
           </div>
 
           {/* Linhas das Tarefas */}
-          <div className="flex-1 divide-y divide-zinc-800/50 pb-20 relative">
+          <div className="flex-1 divide-y divide-slate-100 pb-20 relative">
             {/* LINHA VERTICAL DE "HOJE" (MÁGICA DE SENIOR) */}
             {(() => {
               const today = new Date();
@@ -144,10 +162,10 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
                 const left = ((today.getTime() - timelineStart) / (timelineEnd - timelineStart)) * 100;
                 return (
                   <div 
-                    className="absolute top-0 bottom-0 w-px bg-indigo-500/50 z-20 pointer-events-none"
+                    className="absolute top-0 bottom-0 w-px bg-indigo-400 z-20 pointer-events-none"
                     style={{ left: `calc(320px + (100% - 320px) * ${left / 100})` }}
                   >
-                    <div className="bg-indigo-500 text-[8px] font-bold text-white px-1 rounded-sm absolute -top-1 -translate-x-1/2 uppercase">Hoje</div>
+                    <div className="bg-indigo-600 text-[8px] font-bold text-white px-1 rounded-sm absolute -top-1 -translate-x-1/2 uppercase">Hoje</div>
                   </div>
                 );
               }
@@ -183,45 +201,50 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
               const progressPercent = est > 0 ? Math.min((spent / est) * 100, 100) : 0;
 
               // Cores Dinâmicas da Barra
-              let barColor = "bg-zinc-900 border-zinc-700 hover:border-indigo-500/50";
-              let progressColor = "bg-indigo-500/20";
-              let textColor = "text-indigo-200";
+              let barColor = "bg-white border-slate-200 hover:border-indigo-300";
+              let progressColor = "bg-indigo-100";
+              let textColor = "text-indigo-700";
               if (isCompleted) {
-                barColor = "bg-emerald-950/20 border-emerald-500/30";
-                progressColor = "bg-emerald-500/30";
-                textColor = "text-emerald-200";
+                barColor = "bg-emerald-50 border-emerald-200";
+                progressColor = "bg-emerald-100";
+                textColor = "text-emerald-700";
               } else if (task.is_blocked) {
-                barColor = "bg-red-950/20 border-red-500/30";
-                progressColor = "bg-red-500/20";
-                textColor = "text-red-200";
+                barColor = "bg-red-50 border-red-200";
+                progressColor = "bg-red-100";
+                textColor = "text-red-700";
               }
 
               return (
-                <div key={task.id} className="flex text-sm text-zinc-300 hover:bg-white/[0.02] transition-colors group h-14">
+                <div key={task.id} className="flex text-sm text-slate-700 hover:bg-slate-50 transition-colors group h-14">
                   {/* Coluna Esquerda: Escopo e Cliente */}
-                  <div className="w-80 p-3 border-r border-zinc-800/50 flex-shrink-0 flex flex-col justify-center gap-0.5 bg-zinc-950 sticky left-0 z-10 shadow-xl">
+                  <div className="w-80 p-3 border-r border-slate-100 flex-shrink-0 flex flex-col justify-center gap-0.5 bg-white sticky left-0 z-10 shadow-sm">
                     <div className="flex items-center gap-2 truncate">
                       {task.is_blocked && <AlertTriangle size={14} className="text-red-500 shrink-0" />}
                       {!task.is_blocked && isCompleted && <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
-                      {!task.is_blocked && !isCompleted && <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />}
+                      {!task.is_blocked && !isCompleted && <div className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" />}
                       <span className={cn(
                         "font-bold text-xs truncate transition-colors",
-                        isCompleted ? "text-zinc-500 line-through" : "text-zinc-100"
+                        isCompleted ? "text-slate-400 line-through" : "text-slate-900"
                       )}>
                         {task.title}
                       </span>
                     </div>
                     <div className="flex items-center justify-between pl-4">
                       {task.clients?.name ? (
-                        <div className="text-[9px] font-bold text-zinc-600 flex items-center gap-1 truncate uppercase tracking-tighter">
+                        <div className="text-[9px] font-bold text-slate-400 flex items-center gap-1 truncate uppercase tracking-tighter">
                           <Building2 size={10} /> {task.clients.name}
                         </div>
                       ) : (
-                        <div className="text-[10px] text-zinc-600 flex items-center gap-1.5 italic">
+                        <div className="text-[10px] text-slate-300 flex items-center gap-1.5 italic">
                           Interno
                         </div>
                       )}
-                      <span className="text-[9px] font-black text-zinc-700 bg-zinc-900 px-1.5 rounded uppercase">{task.status}</span>
+                      <span className={cn(
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider",
+                        STATUS_STYLES[task.status] || "bg-slate-100 text-slate-500 border-slate-200"
+                      )}>
+                        {STATUS_LABELS[task.status] || task.status}
+                      </span>
                     </div>
                   </div>
 
@@ -257,13 +280,13 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
                           <div className="flex -space-x-1.5 shrink-0 ml-2">
                             {task.profiles ? (
                               <div 
-                                className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-[9px] font-bold text-white border border-zinc-600 shadow-sm" 
+                                className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-700 border border-slate-200 shadow-sm" 
                                 title={task.profiles.full_name || undefined}
                               >
                                 {task.profiles.full_name?.charAt(0)}
                               </div>
                             ) : (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-500">
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-50 border border-slate-200 text-slate-300">
                                 <User size={10} />
                               </div>
                             )}
@@ -277,10 +300,10 @@ export function GanttBoard({ tasks: initialTasks }: { tasks: FullTaskData[] }) {
             })}
             
             {tasks.length === 0 && (
-              <div className="p-16 text-center text-zinc-500 flex flex-col items-center">
-                <Calendar className="h-10 w-10 text-zinc-800 mb-3" />
+              <div className="p-16 text-center text-slate-400 flex flex-col items-center">
+                <Calendar className="h-10 w-10 text-slate-200 mb-3" />
                 <p>Nenhuma tarefa agendada neste quadro.</p>
-                <p className="text-xs text-zinc-600 mt-1">Defina a "Data de Início" e o "Prazo Final" nas tarefas para elas aparecerem aqui.</p>
+                <p className="text-xs text-slate-300 mt-1">Defina a "Data de Início" e o "Prazo Final" nas tarefas para elas aparecerem aqui.</p>
               </div>
             )}
           </div>

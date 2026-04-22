@@ -108,12 +108,12 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl pb-10">
+    <div className="mx-auto max-w-4xl pb-10 text-slate-900">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Configurações e Perfil
         </h1>
-        <p className="text-sm text-zinc-400 mt-1">
+        <p className="text-sm text-slate-500 mt-1">
           Gerencie suas informações pessoais e credenciais de acesso.
         </p>
       </div>
@@ -126,8 +126,8 @@ export default function SettingsPage() {
             onClick={() => setActiveTab("profile")}
             className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               activeTab === "profile" 
-              ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
-              : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
+              ? "bg-indigo-50 text-indigo-600 border border-indigo-200" 
+              : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             <UserCircle size={18} />
@@ -136,7 +136,7 @@ export default function SettingsPage() {
           
           <button 
             onClick={() => toast.info("Notificações estarão disponíveis na v2 do PulseBoard.")}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
           >
             <Bell size={18} />
             Notificações
@@ -144,7 +144,7 @@ export default function SettingsPage() {
           
           <button 
             onClick={() => toast.info("Segurança estará disponível na v2 do PulseBoard.")}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
           >
             <Lock size={18} />
             Segurança
@@ -152,7 +152,7 @@ export default function SettingsPage() {
           
           <button 
             onClick={() => toast.info("Temas estarão disponíveis na v2 do PulseBoard.")}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
           >
             <Palette size={18} />
             Aparência
@@ -161,11 +161,11 @@ export default function SettingsPage() {
 
         {/* Área Principal */}
         <div className="md:col-span-3 space-y-6">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-lg">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
             
-            <div className="p-6 border-b border-zinc-800 bg-zinc-900/40">
-              <h2 className="text-lg font-semibold text-white">Informações Pessoais</h2>
-              <p className="text-xs text-zinc-500 mt-1">Atualize sua foto e detalhes pessoais aqui.</p>
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-lg font-semibold text-slate-900">Informações Pessoais</h2>
+              <p className="text-xs text-slate-500 mt-1">Atualize sua foto e detalhes pessoais aqui.</p>
             </div>
             
             <div className="p-6">
@@ -178,18 +178,18 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <button 
                       onClick={() => toast.info("Upload de foto em breve.")}
-                      className="rounded-md bg-zinc-800 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 transition-colors border border-zinc-700"
+                      className="rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors border border-slate-200 shadow-sm"
                     >
                       Alterar Foto
                     </button>
                     {role === "admin" && (
-                      <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/20">
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-600 border border-indigo-100">
                         <Shield size={12} /> Admin
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-zinc-500">
-                    Sua conta está configurada como <strong className="text-zinc-300">{translateRole(role)}</strong>.
+                  <p className="text-xs text-slate-500">
+                    Sua conta está configurada como <strong className="text-slate-700">{translateRole(role)}</strong>.
                   </p>
                 </div>
               </div>
@@ -198,49 +198,49 @@ export default function SettingsPage() {
               <div className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Primeiro Nome</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Primeiro Nome</label>
                     <input 
                       type="text" 
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" 
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all" 
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Sobrenome</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Sobrenome</label>
                     <input 
                       type="text" 
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" 
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all" 
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Email Corporativo (Login)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Email Corporativo (Login)</label>
                   <div className="relative">
                     <input 
                       type="email" 
                       value={email} 
                       disabled 
-                      className="w-full rounded-lg border border-zinc-800/50 bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-500 cursor-not-allowed" 
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400 cursor-not-allowed" 
                     />
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <Lock size={14} className="text-zinc-600" />
+                      <Lock size={14} className="text-slate-300" />
                     </div>
                   </div>
-                  <p className="text-[10px] text-zinc-600 mt-1.5">
+                  <p className="text-[10px] text-slate-400 mt-1.5">
                     O e-mail de acesso não pode ser alterado por aqui. Contate o suporte.
                   </p>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-zinc-800/50 flex justify-end">
+              <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
                 <button 
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-500 transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)] disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                   Salvar Alterações

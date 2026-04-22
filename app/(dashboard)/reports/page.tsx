@@ -165,28 +165,28 @@ export default function ReportsPage() {
 
       // Status Visual da Operação
       let statusLabel = "Crítico";
-      let statusColor = "text-red-400 bg-red-500/10 border-red-500/20";
+      let statusColor = "text-red-700 bg-red-50 border-red-100";
       let barColor = "bg-red-500";
 
       if (totalTasks === 0) {
         statusLabel = "Sem Demandas";
-        statusColor = "text-zinc-400 bg-zinc-500/10 border-zinc-500/20";
-        barColor = "bg-zinc-500";
+        statusColor = "text-slate-500 bg-slate-50 border-slate-200";
+        barColor = "bg-slate-200";
       } else if (completionRate === 100) {
         statusLabel = "Concluído";
-        statusColor = "text-blue-400 bg-blue-500/10 border-blue-500/20";
+        statusColor = "text-blue-700 bg-blue-50 border-blue-100";
         barColor = "bg-blue-500";
       } else if (blockedTasks > 0) {
         statusLabel = "Impedido";
-        statusColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+        statusColor = "text-amber-700 bg-amber-50 border-amber-100";
         barColor = "bg-amber-500";
       } else if (completionRate >= 70) {
         statusLabel = "Saudável";
-        statusColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+        statusColor = "text-emerald-700 bg-emerald-50 border-emerald-100";
         barColor = "bg-emerald-500";
       } else if (completionRate >= 30) {
         statusLabel = "Atenção";
-        statusColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+        statusColor = "text-amber-700 bg-amber-50 border-amber-100";
         barColor = "bg-amber-500";
       }
 
@@ -279,44 +279,44 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl pb-10">
+    <div className="mx-auto max-w-7xl pb-10 text-slate-900">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <LayoutDashboard className="text-indigo-500" /> Relatórios Operacionais
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">Análise de produtividade, gargalos operacionais e entregas da equipe.</p>
+          <p className="text-sm text-slate-500 mt-1">Análise de produtividade, gargalos operacionais e entregas da equipe.</p>
         </div>
         
         {/* BARRA DE FILTROS AVANÇADA */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto bg-zinc-900/80 p-2 rounded-xl border border-zinc-800 shadow-lg flex-wrap justify-end">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex-wrap justify-end">
           
           {/* Filtro de Equipe */}
-          <div className="flex items-center gap-2 px-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
-            <Users size={14} className="text-zinc-400 ml-1" />
+          <div className="flex items-center gap-2 px-2 bg-slate-50 rounded-lg border border-slate-200">
+            <Users size={14} className="text-slate-400 ml-1" />
             <select 
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="bg-transparent text-sm text-white rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px] cursor-pointer"
+              className="bg-transparent text-sm text-slate-900 rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px] cursor-pointer"
             >
-              <option value="" className="bg-zinc-900">Todas as Equipes</option>
+              <option value="">Todas as Equipes</option>
               {teams.map(team => (
-                <option key={team.id} value={team.id} className="bg-zinc-900">{team.name}</option>
+                <option key={team.id} value={team.id}>{team.name}</option>
               ))}
             </select>
           </div>
 
           {/* Filtro de Pessoa */}
-          <div className="flex items-center gap-2 px-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
-            <User size={14} className="text-zinc-400 ml-1" />
+          <div className="flex items-center gap-2 px-2 bg-slate-50 rounded-lg border border-slate-200">
+            <User size={14} className="text-slate-400 ml-1" />
             <select 
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
-              className="bg-transparent text-sm text-white rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px] cursor-pointer"
+              className="bg-transparent text-sm text-slate-900 rounded pr-8 py-2 outline-none focus:ring-0 appearance-none min-w-[140px] cursor-pointer"
             >
-              <option value="" className="bg-zinc-900">Todos os Membros</option>
+              <option value="">Todos os Membros</option>
               {profiles.map(profile => (
-                <option key={profile.id} value={profile.id} className="bg-zinc-900">
+                <option key={profile.id} value={profile.id}>
                   {profile.full_name || profile.email}
                 </option>
               ))}
@@ -324,13 +324,13 @@ export default function ReportsPage() {
           </div>
 
           {/* Filtro de Mês */}
-          <div className="flex items-center gap-2 px-2 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
-            <Filter size={14} className="text-zinc-400 ml-1" />
+          <div className="flex items-center gap-2 px-2 bg-slate-50 rounded-lg border border-slate-200">
+            <Filter size={14} className="text-slate-400 ml-1" />
             <input 
               type="month" 
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-sm text-white rounded px-1 py-1.5 outline-none min-w-[130px] cursor-pointer"
+              className="bg-transparent text-sm text-slate-900 rounded px-1 py-1.5 outline-none min-w-[130px] cursor-pointer"
             />
           </div>
 
@@ -338,7 +338,7 @@ export default function ReportsPage() {
           {(selectedMonth || selectedTeam || selectedUser) && (
             <button 
               onClick={() => { setSelectedMonth(""); setSelectedTeam(""); setSelectedUser(""); }} 
-              className="text-xs font-bold text-zinc-400 hover:text-white px-3 py-2 bg-zinc-800 rounded-lg transition-colors border border-zinc-700 hover:border-zinc-500"
+              className="text-xs font-bold text-slate-500 hover:text-slate-900 px-3 py-2 bg-slate-100 rounded-lg transition-colors border border-slate-200 hover:border-slate-300"
             >
               Limpar Filtros
             </button>
@@ -353,121 +353,121 @@ export default function ReportsPage() {
           {/* CARDS DE MÉTRICAS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col relative overflow-hidden">
-              <div className="flex items-center gap-2 text-zinc-400 mb-2">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col relative overflow-hidden shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500 mb-2">
                 <CheckCircle2 size={16} className="text-indigo-400" />
                 <h3 className="text-[11px] font-bold uppercase tracking-wider">Desempenho Global</h3>
               </div>
               <div className="flex items-end gap-2 mt-1">
-                <span className="text-3xl font-bold text-white">{globalCompletionRate}%</span>
-                <span className="text-xs text-zinc-500 font-medium mb-1.5">{globalCompletedTasks} de {globalTotalTasks}</span>
+                <span className="text-3xl font-bold text-slate-900">{globalCompletionRate}%</span>
+                <span className="text-xs text-slate-400 font-medium mb-1.5">{globalCompletedTasks} de {globalTotalTasks}</span>
               </div>
-              <div className="w-full h-1 bg-zinc-800 rounded-full mt-auto">
+              <div className="w-full h-1 bg-slate-100 rounded-full mt-auto">
                 <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${globalCompletionRate}%` }}></div>
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col">
-              <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                <AlertOctagon size={16} className={globalBlockedTasks > 0 ? "text-red-400" : "text-zinc-500"} />
+            <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500 mb-2">
+                <AlertOctagon size={16} className={globalBlockedTasks > 0 ? "text-red-500" : "text-slate-400"} />
                 <h3 className="text-[11px] font-bold uppercase tracking-wider">Impedimentos / Gargalos</h3>
               </div>
-              <span className={`text-3xl font-bold mt-1 ${globalBlockedTasks > 0 ? "text-red-400" : "text-white"}`}>
+              <span className={`text-3xl font-bold mt-1 ${globalBlockedTasks > 0 ? "text-red-600" : "text-slate-900"}`}>
                 {globalBlockedTasks}
               </span>
-              <p className="text-[10px] text-zinc-500 mt-auto uppercase tracking-wide">Tarefas paradas aguardando ação</p>
+              <p className="text-[10px] text-slate-400 mt-auto uppercase tracking-wide">Tarefas paradas aguardando ação</p>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col">
-              <div className="flex items-center gap-2 text-zinc-400 mb-2">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500 mb-2">
                 <Clock size={16} className="text-amber-400" />
                 <h3 className="text-[11px] font-bold uppercase tracking-wider">Horas Investidas</h3>
               </div>
-              <span className="text-3xl font-bold text-white mt-1">{formatTime(globalTotalMinutes)}</span>
-              <p className="text-[10px] text-zinc-500 mt-auto uppercase tracking-wide">Tempo logado na seleção</p>
+              <span className="text-3xl font-bold text-slate-900 mt-1">{formatTime(globalTotalMinutes)}</span>
+              <p className="text-[10px] text-slate-400 mt-auto uppercase tracking-wide">Tempo logado na seleção</p>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col relative overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col relative overflow-hidden shadow-sm">
               <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
-                <DollarSign size={100} />
+                <DollarSign size={100} className="text-slate-900" />
               </div>
-              <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                <DollarSign size={16} className="text-emerald-400" />
+              <div className="flex items-center gap-2 text-slate-500 mb-2">
+                <DollarSign size={16} className="text-emerald-500" />
                 <h3 className="text-[11px] font-bold uppercase tracking-wider">Custo de Operação</h3>
               </div>
               <span className="text-3xl font-bold text-emerald-400 mt-1">{formatCurrency(globalTotalCost)}</span>
-              <p className="text-[10px] text-zinc-500 mt-auto uppercase tracking-wide">Com base nas taxas cadastradas</p>
+              <p className="text-[10px] text-slate-400 mt-auto uppercase tracking-wide">Com base nas taxas cadastradas</p>
             </div>
 
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-lg">
-            <div className="p-6 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-900/40">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
               <div>
-                <h2 className="text-lg font-semibold text-white">Análise Detalhada por Projeto</h2>
+                <h2 className="text-lg font-bold text-slate-900">Análise Detalhada por Projeto</h2>
                 {(selectedMonth || selectedTeam || selectedUser) && (
-                  <span className="text-xs text-indigo-400 font-medium bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 mt-1 inline-block">
+                  <span className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mt-1 inline-block uppercase tracking-wider">
                     Visualizando dados filtrados
                   </span>
                 )}
               </div>
               <button 
                 onClick={exportToExcel}
-                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-4 py-2 text-sm font-bold text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all shadow-sm w-full sm:w-auto"
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all shadow-sm w-full sm:w-auto"
               >
                 <Download size={16} /> Exportar Excel
               </button>
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-zinc-400">
-                <thead className="bg-zinc-800/50 text-xs uppercase text-zinc-500 tracking-wider">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-xs uppercase text-slate-500 tracking-wider">
                   <tr>
-                    <th className="px-6 py-4 font-semibold">Projeto</th>
-                    <th className="px-6 py-4 font-semibold text-center">Progresso</th>
-                    <th className="px-6 py-4 font-semibold text-center">Bloqueios</th>
-                    <th className="px-6 py-4 font-semibold text-right">Tempo Logado</th>
-                    <th className="px-6 py-4 font-semibold text-right">Custo Estimado</th>
+                    <th className="px-6 py-4 font-bold">Projeto</th>
+                    <th className="px-6 py-4 font-bold text-center">Progresso</th>
+                    <th className="px-6 py-4 font-bold text-center">Bloqueios</th>
+                    <th className="px-6 py-4 font-bold text-right">Tempo Logado</th>
+                    <th className="px-6 py-4 font-bold text-right">Custo Estimado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/50">
+                <tbody className="divide-y divide-slate-100">
                   {reportData.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 border border-dashed border-zinc-800 m-4 rounded-lg bg-zinc-900/20">
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-400 border border-dashed border-slate-200 m-4 rounded-lg bg-slate-50 italic">
                         Nenhum dado encontrado para a combinação de filtros selecionada.
                       </td>
                     </tr>
                   ) : (
-                    reportData.map((project) => (
-                      <tr key={project.id} className="hover:bg-zinc-800/30 transition-colors">
+                    reportData.map((project: any) => (
+                      <tr key={project.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-5">
-                          <p className="font-bold text-white mb-1">{project.name}</p>
+                          <p className="font-bold text-slate-900 mb-1">{project.name}</p>
                           <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${project.statusColor}`}>
                             {project.statusLabel}
                           </span>
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-white font-bold">{project.completionRate}%</span>
-                            <div className="h-1.5 w-24 rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                            <span className="text-slate-900 font-bold">{project.completionRate}%</span>
+                            <div className="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
                               <div className={`h-full rounded-full ${project.barColor} transition-all duration-500`} style={{ width: `${project.completionRate}%` }}></div>
                             </div>
-                            <span className="text-[10px] text-zinc-500">{project.completedTasks} de {project.totalTasks} tarefas</span>
+                            <span className="text-[10px] text-slate-400">{project.completedTasks} de {project.totalTasks} tarefas</span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-center">
                           {project.blockedTasks > 0 ? (
-                            <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded-md text-xs font-bold">
+                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-100 px-2 py-1 rounded-md text-xs font-bold">
                               <AlertOctagon size={12} /> {project.blockedTasks}
                             </span>
                           ) : (
-                            <span className="text-zinc-600">-</span>
+                            <span className="text-slate-300">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-5 text-right font-medium text-amber-400/90">
+                        <td className="px-6 py-5 text-right font-bold text-amber-600">
                           {formatTime(project.totalMinutes)}
                         </td>
-                        <td className="px-6 py-5 text-right font-bold text-emerald-400">
+                        <td className="px-6 py-5 text-right font-bold text-emerald-600">
                           {formatCurrency(project.totalCost)}
                         </td>
                       </tr>

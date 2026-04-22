@@ -88,12 +88,12 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
 
   if (profile?.role !== "admin" && profile?.role !== "manager") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-2xl">
-        <div className="bg-red-500/10 p-4 rounded-full mb-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+        <div className="bg-red-50 p-4 rounded-full mb-4">
           <ShieldAlert className="text-red-500" size={48} />
         </div>
-        <h3 className="text-xl font-bold text-white">Acesso Restrito</h3>
-        <p className="text-zinc-400 max-w-xs mt-2">Este painel contém dados sensíveis de faturamento e é restrito à diretoria e gestão financeira.</p>
+        <h3 className="text-xl font-bold text-slate-900">Acesso Restrito</h3>
+        <p className="text-slate-500 max-w-xs mt-2">Este painel contém dados sensíveis de faturamento e é restrito à diretoria e gestão financeira.</p>
       </div>
     );
   }
@@ -344,11 +344,11 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
     <div className="mx-auto max-w-7xl pb-10">
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <TrendingUp className="text-emerald-500" />
             Painel Financeiro & Burn Rate
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Visão confidencial de rentabilidade por projeto e custo de manutenção de clientes.
           </p>
         </div>
@@ -359,70 +359,70 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
 
       {/* KPIs Globais */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm relative overflow-hidden">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8" />
-          <div className="flex items-center gap-3 text-emerald-400 mb-2">
+          <div className="flex items-center gap-3 text-emerald-600 mb-2">
             <DollarSign size={20} />
             <span className="text-sm font-medium uppercase tracking-wider">Custo de Operação</span>
           </div>
-          <p className="text-3xl font-bold text-white relative z-10">
+          <p className="text-3xl font-bold text-slate-900 relative z-10">
             {formatCurrency(totalGlobalCost)}
           </p>
           <div className="flex items-center gap-2 mt-2 relative z-10">
             <span className={cn(
               "text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded",
-              averageHourlyCost > 150 ? "bg-red-500/10 text-red-400" : "bg-zinc-800 text-zinc-400"
+              averageHourlyCost > 150 ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"
             )}>
               Burn Rate: {formatCurrency(averageHourlyCost)}/h
             </span>
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
-          <div className="flex items-center gap-3 text-indigo-400 mb-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-3 text-indigo-600 mb-2">
             <Clock size={20} />
             <span className="text-sm font-medium uppercase tracking-wider">Tempo Faturado</span>
           </div>
-          <p className="text-3xl font-bold text-white">{formatTime(totalGlobalMinutes)}</p>
-          <p className="text-xs text-zinc-500 mt-1">Horas totais registradas</p>
+          <p className="text-3xl font-bold text-slate-900">{formatTime(totalGlobalMinutes)}</p>
+          <p className="text-xs text-slate-500 mt-1">Horas totais registradas</p>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
-          <div className="flex items-center gap-3 text-amber-400 mb-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-3 text-amber-600 mb-2">
             <Building2 size={20} />
             <span className="text-sm font-medium uppercase tracking-wider">Clientes Atendidos</span>
           </div>
-          <p className="text-3xl font-bold text-white">{topClients.length}</p>
-          <p className="text-xs text-zinc-500 mt-1">Consumindo caixa atualmente</p>
+          <p className="text-3xl font-bold text-slate-900">{topClients.length}</p>
+          <p className="text-xs text-slate-500 mt-1">Consumindo caixa atualmente</p>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
-          <div className="flex items-center gap-3 text-blue-400 mb-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-3 text-blue-600 mb-2">
             <Users size={20} />
             <span className="text-sm font-medium uppercase tracking-wider">Equipe Alocada</span>
           </div>
-          <p className="text-3xl font-bold text-white">{uniqueUsersLoggingTime.size}</p>
-          <p className="text-xs text-zinc-500 mt-1">Colaboradores ativos nos projetos</p>
+          <p className="text-3xl font-bold text-slate-900">{uniqueUsersLoggingTime.size}</p>
+          <p className="text-xs text-slate-500 mt-1">Colaboradores ativos nos projetos</p>
         </div>
       </div>
 
       {/* MONITOR DE CARGA E SAÚDE DO TIME (WORKLOAD) */}
-      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg">
+      <div className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-              <Users size={18} className="text-blue-400" />
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Users size={18} className="text-blue-600" />
               Capacidade & Resiliência do Time
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">Estimativa de ocupação baseada em cards ativos (Limite: 160h/mês).</p>
+            <p className="text-xs text-slate-500 mt-1">Estimativa de ocupação baseada em cards ativos (Limite: 160h/mês).</p>
           </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {teamWorkload.map((member) => (
-            <div key={member.id} className="p-4 rounded-lg bg-zinc-900/40 border border-zinc-800">
+            <div key={member.id} className="p-4 rounded-lg bg-slate-50 border border-slate-200 shadow-sm">
               <div className="flex justify-between items-end mb-2">
-                <span className="text-xs font-bold text-white uppercase tracking-tighter truncate max-w-[180px]">
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-tighter truncate max-w-[180px]">
                   {member.name}
                 </span>
                 <span className={cn(
@@ -432,17 +432,17 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
                   {member.percentage}%
                 </span>
               </div>
-              <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
                 <div 
                   className={cn(
                     "h-full transition-all duration-1000",
-                    member.percentage > 100 ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : member.percentage > 80 ? "bg-amber-500" : "bg-emerald-500"
+                    member.percentage > 100 ? "bg-red-500" : member.percentage > 80 ? "bg-amber-500" : "bg-emerald-500"
                   )}
                   style={{ width: `${Math.min(member.percentage, 100)}%` }}
                 />
               </div>
               {member.percentage > 100 && (
-                <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">
+                <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-red-600 bg-red-50 p-2 rounded border border-red-100">
                   <AlertTriangle size={12} /> ALERTA DE BURNOUT: Sobrecarga Detectada
                 </div>
               )}
@@ -453,41 +453,41 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* RELATÓRIO 1: CUSTO POR CLIENTE */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-lg flex flex-col">
-          <div className="px-6 py-5 border-b border-zinc-800 bg-zinc-900/40">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-              <Building2 size={18} className="text-zinc-400" />
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col">
+          <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Building2 size={18} className="text-slate-400" />
               Custo de Operação por Cliente
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Saiba exatamente quanto de folha de pagamento cada cliente está consumindo.
             </p>
           </div>
 
           <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left text-sm text-zinc-300">
-              <thead className="bg-zinc-900/60 text-[10px] uppercase text-zinc-500 border-b border-zinc-800 tracking-wider">
+            <table className="w-full text-left text-sm text-slate-900">
+              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500 border-b border-slate-200 tracking-wider">
                 <tr>
                   <th className="px-6 py-3 font-bold">Cliente</th>
                   <th className="px-6 py-3 font-bold text-right">Horas</th>
                   <th className="px-6 py-3 font-bold text-right">Custo Real</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/50">
+              <tbody className="divide-y divide-slate-100">
                 {topClients.map((client, i) => (
-                  <tr key={i} className="hover:bg-zinc-900/30 transition-colors">
-                    <td className="px-6 py-4 font-medium text-white flex items-center gap-2">
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
                       {client.name}
                       {client.name === 'Operação Interna (Sem Cliente)' && (
-                        <span className="px-2 py-0.5 rounded text-[9px] bg-zinc-800 text-zinc-400 uppercase tracking-widest">
+                        <span className="px-2 py-0.5 rounded text-[9px] bg-slate-100 text-slate-500 uppercase tracking-widest border border-slate-200">
                           Interno
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className="text-zinc-400">{formatTime(client.minutes)}</span>
+                      <span className="text-slate-500">{formatTime(client.minutes)}</span>
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-emerald-400">
+                    <td className="px-6 py-4 text-right font-bold text-emerald-600">
                       {formatCurrency(client.cost)}
                     </td>
                   </tr>
@@ -495,7 +495,7 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
                 {topClients.length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-6 py-12 text-center">
-                      <p className="text-zinc-500 italic">Nenhum dado financeiro de cliente registrado.</p>
+                      <p className="text-slate-400 italic">Nenhum dado financeiro de cliente registrado.</p>
                     </td>
                   </tr>
                 )}
@@ -505,34 +505,34 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
         </div>
 
         {/* RELATÓRIO 2: CUSTO POR PROJETO */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-lg flex flex-col">
-          <div className="px-6 py-5 border-b border-zinc-800 bg-zinc-900/40">
-            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-              <BarChart3 size={18} className="text-zinc-400" />
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col">
+          <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <BarChart3 size={18} className="text-slate-400" />
               Burn Rate por Projeto (Board)
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Quais frentes de trabalho estão consumindo mais recursos da empresa.
             </p>
           </div>
 
           <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left text-sm text-zinc-300">
-              <thead className="bg-zinc-900/60 text-[10px] uppercase text-zinc-500 border-b border-zinc-800 tracking-wider">
+            <table className="w-full text-left text-sm text-slate-900">
+              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500 border-b border-slate-200 tracking-wider">
                 <tr>
                   <th className="px-6 py-3 font-bold">Projeto</th>
                   <th className="px-6 py-3 font-bold text-right">Horas</th>
                   <th className="px-6 py-3 font-bold text-right">Custo Real</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/50">
+              <tbody className="divide-y divide-slate-100">
                 {topBoards.map((board, i) => (
-                  <tr key={i} className="hover:bg-zinc-900/30 transition-colors">
-                    <td className="px-6 py-4 font-medium text-white">{board.name}</td>
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-900">{board.name}</td>
                     <td className="px-6 py-4 text-right">
-                      <span className="text-zinc-400">{formatTime(board.minutes)}</span>
+                      <span className="text-slate-500">{formatTime(board.minutes)}</span>
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-emerald-400">
+                    <td className="px-6 py-4 text-right font-bold text-emerald-600">
                       {formatCurrency(board.cost)}
                     </td>
                   </tr>
@@ -540,7 +540,7 @@ export default async function ExecutiveDashboard({ searchParams }: PageProps) {
                 {topBoards.length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-6 py-12 text-center">
-                      <p className="text-zinc-500 italic">Nenhum projeto com horas registradas.</p>
+                      <p className="text-slate-400 italic">Nenhum projeto com horas registradas.</p>
                     </td>
                   </tr>
                 )}

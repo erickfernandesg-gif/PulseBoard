@@ -16,10 +16,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`}>
-      <body className="bg-zinc-950 text-zinc-50 antialiased selection:bg-indigo-500/30">
+    <html lang="en" className={`${inter.variable}`}>
+      <body className="bg-slate-50 text-slate-900 antialiased selection:bg-indigo-500/30">
         {children}
-        <Toaster theme="dark" position="bottom-right" />
+        <Toaster theme="light" position="bottom-right" closeButton richColors />
       </body>
     </html>
   );

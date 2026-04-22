@@ -64,11 +64,11 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
   const supabase = createClient();
 
   const priorityColors: Record<string, string> = {
-    low: "bg-zinc-800 text-zinc-300 border-zinc-700",
-    medium: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    urgent: "bg-purple-500/10 text-purple-400 border-purple-500/20", // Adicionado para consistência
-    critical: "bg-red-500/10 text-red-400 border-red-500/30",
+    low: "bg-slate-100 text-slate-600 border-slate-200",
+    medium: "bg-blue-50 text-blue-600 border-blue-100",
+    high: "bg-orange-50 text-orange-600 border-orange-100",
+    urgent: "bg-purple-50 text-purple-600 border-purple-100",
+    critical: "bg-red-50 text-red-600 border-red-100",
   };
 
   const priorityLabels: Record<string, string> = {
@@ -136,14 +136,13 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
               {...provided.draggableProps}
               {...provided.dragHandleProps}
               className={cn(
-                "group flex flex-col gap-3 rounded-xl border p-4 shadow-sm relative overflow-hidden select-none touch-none",
-                // Fix Sênior: Desativa transições durante o drag e remove o scale para precisão total
+                "group flex flex-col gap-3 rounded-xl border p-4 relative overflow-hidden select-none touch-none",
                 snapshot.isDragging ? "transition-none" : "transition-all duration-200",
                 snapshot.isDragging 
-                  ? "border-indigo-500 shadow-2xl z-[9999] ring-4 ring-indigo-500/20 bg-zinc-900 opacity-100 cursor-grabbing will-change-transform" 
+                  ? "border-indigo-500 shadow-2xl z-[9999] ring-4 ring-indigo-500/10 bg-white opacity-100 cursor-grabbing will-change-transform" 
                   : task.is_blocked
-                    ? "border-red-500/50 bg-[#1a0f0f] hover:border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.1)] bg-[url('/diagonal-stripes.svg')]"
-                    : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                    ? "border-red-200 bg-red-50 hover:border-red-300 shadow-sm"
+                    : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-md"
               )}
               style={{
                 ...provided.draggableProps.style,
@@ -166,12 +165,12 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
                 </span>
                 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {isMoving && <Loader2 size={12} className="animate-spin text-indigo-500 mr-1" />}
+                  {isMoving && <Loader2 size={12} className="animate-spin text-indigo-600 mr-1" />}
                   {canMoveLeft && (
                     <button
                       onClick={(e) => handleMove("left", e)}
                       disabled={isMoving}
-                      className="p-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                      className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                     >
                       <ChevronLeft size={16} />
                     </button>
@@ -180,7 +179,7 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
                     <button
                       onClick={(e) => handleMove("right", e)}
                       disabled={isMoving}
-                      className="p-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                      className="p-1 rounded bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                     >
                       <ChevronRight size={16} />
                     </button>
@@ -189,23 +188,23 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
               </div>
 
               {/* Corpo do Card */}
-              <div onClick={() => setIsModalOpen(true)} className="cursor-pointer group-hover:text-indigo-100 relative z-10">
+              <div onClick={() => setIsModalOpen(true)} className="cursor-pointer relative z-10">
                 <div className="flex flex-col gap-1">
                   {task.clients?.name && (
-                    <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-400 uppercase tracking-tighter mb-1 truncate">
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-indigo-600 uppercase tracking-tighter mb-1 truncate">
                       <Building2 size={10} /> {task.clients.name}
                     </div>
                   )}
-                  <h4 className="font-semibold text-white text-sm leading-tight">{task.title}</h4>
+                  <h4 className="font-semibold text-slate-900 text-sm leading-tight group-hover:text-indigo-700 transition-colors">{task.title}</h4>
                   
                   <div className="flex gap-2 mt-2">
                     {isKnowledgeSilo && (
-                      <div className="flex items-center gap-1 text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 animate-pulse">
+                      <div className="flex items-center gap-1 text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
                         <User size={10} /> SILO DE CONHECIMENTO
                       </div>
                     )}
                     {isHighCognitiveDebt && (
-                      <div className="flex items-center gap-1 text-[9px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                      <div className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
                         <Timer size={10} /> DÍVIDA COGNITIVA ALTA
                       </div>
                     )}
@@ -215,12 +214,12 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
                 {spent > 0 && (
                   <div className="mt-3 space-y-1">
                     <div className="flex justify-between text-[9px] font-bold uppercase tracking-tighter">
-                      <span className={isOverBudget ? "text-red-400" : "text-zinc-500"}>
+                      <span className={isOverBudget ? "text-red-600" : "text-slate-500"}>
                         {formatMins(spent)} consumidos
                       </span>
-                      {hasEstimates && <span className="text-zinc-600">Alvo: {formatMins(est)}</span>}
+                      {hasEstimates && <span className="text-slate-400">Alvo: {formatMins(est)}</span>}
                     </div>
-                    <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div 
                         className={cn("h-full transition-all duration-500", isOverBudget ? "bg-red-500" : "bg-emerald-500")}
                         style={{ width: `${percentage}%` }}
@@ -230,18 +229,18 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
                 )}
 
                 {task.is_blocked ? (
-                  <div className="mt-3 flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
+                  <div className="mt-3 flex items-start gap-2 bg-white border border-red-100 rounded-lg p-2.5 shadow-sm">
                     <AlertOctagon size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <div>
                       <span className="font-bold uppercase text-[9px] text-red-500 tracking-wider block mb-0.5">Impedimento Ativo</span>
-                      <p className="text-xs text-red-200 font-medium leading-tight line-clamp-2">
+                      <p className="text-xs text-red-900 font-medium leading-tight line-clamp-2">
                         {task.blocker_reason || "Bloqueada sem motivo detalhado."}
                       </p>
                     </div>
                   </div>
                 ) : (
                   task.description && (
-                    <p className="mt-2 line-clamp-2 text-xs text-zinc-500 leading-relaxed">
+                    <p className="mt-2 line-clamp-2 text-xs text-slate-500 leading-relaxed">
                       {task.description}
                     </p>
                   )
@@ -249,19 +248,19 @@ export function KanbanTask({ task, index, onTaskUpdated, onTaskDeleted }: { task
               </div>
 
               {/* Rodapé */}
-              <div className="mt-2 flex items-center justify-between border-t border-zinc-800/50 pt-3 cursor-pointer relative z-10" onClick={() => setIsModalOpen(true)}>
-                <div className="flex items-center gap-3 text-xs text-zinc-500">
+              <div className="mt-2 flex items-center justify-between border-t border-slate-50 pt-3 cursor-pointer relative z-10" onClick={() => setIsModalOpen(true)}>
+                <div className="flex items-center gap-3 text-xs text-slate-500">
                   {task.due_date ? (
                     <div className="flex items-center gap-1 font-medium">
                       <Calendar size={12} />
                       <span>{format(new Date(task.due_date), "dd/MM", { locale: ptBR })}</span>
                     </div>
                   ) : (
-                    <span className="italic text-zinc-600">Sem prazo</span>
+                    <span className="italic text-slate-300">Sem prazo</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white uppercase shadow-sm">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white uppercase shadow-sm">
                     {task.profiles?.full_name?.charAt(0) || <User size={12} />}
                   </div>
                 </div>

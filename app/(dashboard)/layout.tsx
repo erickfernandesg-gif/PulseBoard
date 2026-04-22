@@ -30,7 +30,7 @@ export default async function DashboardLayout({
   const userProfile = profile || { full_name: user.email, email: user.email, role: 'user' };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900 selection:bg-indigo-500/30">
       
       {/* Sidebar agora recebe os dados instantaneamente, sem loadings na tela */}
       <Sidebar userProfile={userProfile} boards={boards || []} />
@@ -43,7 +43,7 @@ export default async function DashboardLayout({
           <Topbar user={user} />
         </div>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-zinc-950/50 custom-scrollbar relative">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-50 custom-scrollbar relative">
           <div className="mx-auto w-full max-w-7xl animate-in fade-in duration-500">
             {children}
           </div>

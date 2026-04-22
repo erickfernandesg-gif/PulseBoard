@@ -57,7 +57,7 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-800/80 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all shadow-sm active:scale-95"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm active:scale-95"
       >
         <Menu size={20} />
       </button>
@@ -70,17 +70,17 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
 
       {/* Menu Lateral Deslizante */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-zinc-950 border-r border-zinc-800/80 transition-transform duration-300 ease-out md:hidden shadow-2xl",
+        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-white border-r border-slate-200 transition-transform duration-300 ease-out md:hidden shadow-2xl",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex h-16 shrink-0 items-center justify-between px-5 border-b border-zinc-800/50">
+        <div className="flex h-16 shrink-0 items-center justify-between px-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 shadow-sm">
               <FolderKanban className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-bold text-white tracking-tight">PulseBoard</span>
+            <span className="text-lg font-bold text-foreground tracking-tight">PulseBoard</span>
           </div>
-          <button onClick={() => setIsOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+          <button onClick={() => setIsOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -88,7 +88,7 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
         <div className="flex-1 overflow-y-auto py-6">
           {/* Links Principais */}
           <div className="px-4 space-y-1 mb-6">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Principal</p>
+            <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Principal</p>
             {visibleLinks.map((link) => {
               const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
               const Icon = link.icon;
@@ -99,11 +99,11 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
                   onClick={() => setIsOpen(false)}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all group relative",
-                    isActive ? "bg-indigo-500/10 text-indigo-400" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    isActive ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                   )}
                 >
-                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-indigo-500 rounded-r-full" />}
-                  <Icon size={18} className={cn("transition-colors", isActive ? "text-indigo-400" : "text-zinc-500")} />
+                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-primary rounded-r-full" />}
+                  <Icon size={18} className={cn("transition-colors", isActive ? "text-indigo-600" : "text-slate-400")} />
                   {link.name}
                 </Link>
               );
@@ -112,9 +112,9 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
 
           {/* Seção de Quadros */}
           <div className="px-4 space-y-1 flex-1">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Meus Quadros</p>
+            <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Meus Quadros</p>
             {boards?.length === 0 ? (
-              <p className="px-4 py-2 text-xs text-zinc-600 italic">Nenhum quadro criado.</p>
+              <p className="px-4 py-2 text-xs text-slate-400 italic">Nenhum quadro criado.</p>
             ) : (
               boards?.map((board) => {
                 const href = `/boards/${board.id}`;
@@ -126,11 +126,11 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
                     onClick={() => setIsOpen(false)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all relative",
-                      isActive ? "bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                      isActive ? "bg-slate-50 text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                     )}
                   >
-                    {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-zinc-400 rounded-r-full" />}
-                    <div className={cn("h-2 w-2 rounded-full shrink-0", isActive ? "bg-indigo-500" : "bg-zinc-700")} />
+                    {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-slate-400 rounded-r-full" />}
+                    <div className={cn("h-2 w-2 rounded-full shrink-0", isActive ? "bg-indigo-600" : "bg-slate-200")} />
                     <span className="truncate">{board.name}</span>
                   </Link>
                 );
@@ -140,14 +140,14 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
         </div>
 
         {/* Rodapé com Perfil e Logout */}
-        <div className="border-t border-zinc-800/50 p-4 bg-zinc-950/80 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-3 rounded-xl bg-zinc-900/40 p-3 mb-2 border border-zinc-800/50">
+        <div className="border-t border-slate-100 p-4 bg-white shrink-0">
+          <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 mb-2 border border-slate-100">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm uppercase shadow-sm">
               {userProfile?.full_name?.charAt(0) || userProfile?.email?.charAt(0) || "U"}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-sm font-bold text-white truncate">{userProfile?.full_name || "Usuário"}</span>
-              <span className="text-[10px] text-zinc-500 truncate uppercase font-semibold">
+              <span className="text-sm font-bold text-foreground truncate">{userProfile?.full_name || "Usuário"}</span>
+              <span className="text-[10px] text-slate-500 truncate uppercase font-semibold">
                 {userProfile?.role === 'admin' ? 'Administrador' : userProfile?.role === 'manager' ? 'Gestor' : 'Colaborador'}
               </span>
             </div>
@@ -155,7 +155,7 @@ export function MobileSidebar({ userProfile, boards = [] }: MobileSidebarProps) 
           
           <button
             onClick={() => { setIsOpen(false); handleLogout(); }}
-            className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-bold text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/20"
+            className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-bold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200"
           >
             <LogOut size={16} />
             Sair do Sistema

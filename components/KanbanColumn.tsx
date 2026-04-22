@@ -12,10 +12,10 @@ interface ProfileData {
 
 export function KanbanColumn({ column, tasks, profiles, onTaskUpdated, onTaskDeleted }: { column: any; tasks: FullTaskData[]; profiles: ProfileData[]; onTaskUpdated?: () => void; onTaskDeleted?: (taskId: string) => void; }) {
   return (
-    <div className="flex w-80 flex-col rounded-xl bg-zinc-900/50 border border-zinc-800/50 flex-shrink-0 max-h-full">
-      <div className="flex items-center justify-between border-b border-zinc-800/50 p-4">
-        <h3 className="font-bold text-white text-sm uppercase tracking-wider">{column.title}</h3>
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-400">
+    <div className="flex w-80 flex-col rounded-xl bg-slate-50 border border-slate-200 flex-shrink-0 max-h-full shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-200/50 p-4">
+        <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">{column.title}</h3>
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-500 shadow-sm">
           {tasks.length}
         </span>
       </div>

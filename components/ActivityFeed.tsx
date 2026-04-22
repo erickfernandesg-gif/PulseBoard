@@ -80,45 +80,45 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
     switch (log.action) {
       case "status_changed":
         return (
-          <span>
-            <span className="font-bold text-white">{userName}</span> moveu a tarefa <span className="font-semibold text-indigo-400">"{details.task_title}"</span> de <span className="text-zinc-500 line-through">{details.old_status}</span> para <span className="text-emerald-400 font-bold">{details.new_status}</span>
+          <span className="text-slate-500">
+            <span className="font-bold text-slate-900">{userName}</span> moveu a tarefa <span className="font-semibold text-indigo-600">"{details.task_title}"</span> de <span className="text-slate-400 line-through">{details.old_status}</span> para <span className="text-emerald-700 font-bold">{details.new_status}</span>
           </span>
         );
       case "task_blocked":
         return (
-          <span className="text-red-400">
-            <span className="font-bold text-white">{userName}</span> <strong>BLOQUEOU</strong> a tarefa <span className="font-semibold">"{details.task_title}"</span>: <span className="italic">"{details.reason}"</span>
+          <span className="text-red-700">
+            <span className="font-bold text-slate-900">{userName}</span> <strong>BLOQUEOU</strong> a tarefa <span className="font-semibold">"{details.task_title}"</span>: <span className="italic">"{details.reason}"</span>
           </span>
         );
       case "task_unblocked":
         return (
-          <span className="text-emerald-400">
-            <span className="font-bold text-white">{userName}</span> desbloqueou a tarefa <span className="font-semibold">"{details.task_title}"</span>.
+          <span className="text-emerald-700">
+            <span className="font-bold text-slate-900">{userName}</span> desbloqueou a tarefa <span className="font-semibold">"{details.task_title}"</span>.
           </span>
         );
       case "automation_fired":
         return (
-          <span className="text-indigo-400">
-            <span className="font-bold text-white">🤖 PulseBot</span> executou: <span className="italic">"{details.automation_title}"</span> na tarefa <span className="font-semibold text-white">"{details.task_title}"</span>
+          <span className="text-indigo-700">
+            <span className="font-bold text-slate-900">🤖 PulseBot</span> executou: <span className="italic">"{details.automation_title}"</span> na tarefa <span className="font-semibold text-slate-700">"{details.task_title}"</span>
           </span>
         );
       default:
-        return <span><span className="font-bold text-white">{userName}</span> realizou uma ação.</span>;
+        return <span><span className="font-bold text-slate-900">{userName}</span> realizou uma ação.</span>;
     }
   };
 
   const getIcon = (action: string) => {
     if (action === "task_blocked") return <AlertOctagon size={12} className="text-red-500" />;
     if (action === "task_unblocked") return <CheckCircle2 size={12} className="text-emerald-500" />;
-    return <Activity size={12} className="text-zinc-400" />;
+    return <Activity size={12} className="text-slate-400" />;
   };
 
   if (isLoading) {
-    return <div className="flex justify-center p-4"><Loader2 className="animate-spin text-zinc-600" size={20} /></div>;
+    return <div className="flex justify-center p-4"><Loader2 className="animate-spin text-indigo-600" size={20} /></div>;
   }
 
   if (logs.length === 0) {
-    return <p className="text-xs text-zinc-500 italic p-4">Nenhuma atividade registada ainda.</p>;
+    return <p className="text-xs text-slate-500 italic p-4">Nenhuma atividade registrada ainda.</p>;
   }
 
   return (
@@ -126,22 +126,22 @@ export function ActivityFeed({ boardId }: { boardId?: string }) {
       {Object.entries(groupedLogs).map(([dateLabel, dayLogs]: [string, any]) => (
         <div key={dateLabel} className="space-y-4">
           <div className="flex items-center gap-4">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 whitespace-nowrap">{dateLabel}</span>
-            <div className="h-px w-full bg-zinc-800/50"></div>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 whitespace-nowrap">{dateLabel}</span>
+            <div className="h-px w-full bg-slate-200"></div>
           </div>
           {dayLogs.map((log: any) => (
             <div key={log.id} className="flex gap-3 text-sm group">
               <div className={cn(
                 "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
-                log.action === "task_blocked" ? "bg-red-500/10 border-red-500/20" : "bg-zinc-800 border-zinc-700 group-hover:border-zinc-600"
+                log.action === "task_blocked" ? "bg-red-50 border-red-100" : "bg-white border-slate-200 group-hover:border-slate-300 shadow-sm"
               )}>
                 {getIcon(log.action)}
               </div>
-              <div className="flex-1 space-y-1">
-                <p className="text-zinc-300 leading-snug">
+              <div className="flex-1 space-y-0.5">
+                <div className="leading-snug">
                   {renderLogAction(log)}
-                </p>
-                <p className="text-[10px] text-zinc-500 font-medium">
+                </div>
+                <p className="text-[10px] text-slate-500 font-medium">
                   {format(new Date(log.created_at), "HH:mm")} • {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: ptBR })}
                 </p>
               </div>

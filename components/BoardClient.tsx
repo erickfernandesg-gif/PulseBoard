@@ -103,37 +103,37 @@ export function BoardClient({
   }, [tasks]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden bg-slate-50/30 p-4 md:p-8">
       {/* BARRA DE RESILIÊNCIA OPERACIONAL (FUSÃO ENTERPRISE 2.0) */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-4 shadow-sm">
           <div className={cn(
             "p-3 rounded-lg border",
-            boardStats.score > 80 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : boardStats.score > 50 ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-red-500/10 border-red-500/20 text-red-500"
+            boardStats.score > 80 ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-indigo-50 border-indigo-100 text-indigo-600"
           )}>
             <ShieldCheck size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Operational Resilience Index (ORI)</p>
-            <p className="text-xl font-black text-white">{boardStats.score}<span className="text-zinc-600 text-sm ml-1">%</span></p>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Operational Resilience Index (ORI)</p>
+            <p className="text-xl font-black text-slate-900">{boardStats.score}<span className="text-slate-500 text-sm ml-1">%</span></p>
           </div>
         </div>
-        <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+          <div className="p-3 bg-amber-50 border border-amber-200 text-amber-600 rounded-lg">
             <AlertCircle size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Silos de Conhecimento</p>
-            <p className="text-xl font-bold text-white">{boardStats.silos} <span className="text-xs text-zinc-500 font-normal">cards em risco</span></p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Silos de Conhecimento</p>
+            <p className="text-xl font-bold text-slate-900">{boardStats.silos} <span className="text-xs text-slate-500 font-normal">cards em risco</span></p>
           </div>
         </div>
-        <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
-          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+          <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-lg">
             <Zap size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Dívida Cognitiva</p>
-            <p className="text-xl font-bold text-white">{boardStats.debt} <span className="text-xs text-zinc-500 font-normal">atividades estouradas</span></p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dívida Cognitiva</p>
+            <p className="text-xl font-bold text-slate-900">{boardStats.debt} <span className="text-xs text-slate-500 font-normal">atividades estouradas</span></p>
           </div>
         </div>
       </div>
@@ -142,14 +142,14 @@ export function BoardClient({
         
         {/* Lado Esquerdo: Seletor de Visualização e Status */}
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="flex w-full sm:w-auto overflow-x-auto items-center space-x-2 rounded-lg bg-zinc-900/50 p-1 border border-zinc-800 shadow-inner">
+          <div className="flex w-full sm:w-auto overflow-x-auto items-center space-x-2 rounded-lg bg-slate-200/50 p-1 border border-slate-200">
             <button
               onClick={() => setView("kanban")}
               className={cn(
                 "flex items-center rounded-md px-4 py-2 text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
                 view === "kanban"
-                  ? "bg-zinc-800 text-indigo-400 shadow-sm ring-1 ring-zinc-700"
-                  : "text-zinc-500 hover:text-zinc-300",
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900",
               )}
             >
               <LayoutGrid className="mr-2 h-4 w-4" />
@@ -160,8 +160,8 @@ export function BoardClient({
               className={cn(
                 "flex items-center rounded-md px-4 py-2 text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
                 view === "table"
-                  ? "bg-zinc-800 text-indigo-400 shadow-sm ring-1 ring-zinc-700"
-                  : "text-zinc-500 hover:text-zinc-300",
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900",
               )}
             >
               <List className="mr-2 h-4 w-4" />
@@ -172,8 +172,8 @@ export function BoardClient({
               className={cn(
                 "flex items-center rounded-md px-4 py-2 text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
                 view === "gantt"
-                  ? "bg-zinc-800 text-indigo-400 shadow-sm ring-1 ring-zinc-700"
-                  : "text-zinc-500 hover:text-zinc-300",
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900",
               )}
             >
               <Calendar className="mr-2 h-4 w-4" />
@@ -183,7 +183,7 @@ export function BoardClient({
 
           {/* Feedback de Sincronização */}
           {isRefreshing && (
-            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
               <RefreshCw size={12} className="animate-spin" />
               Sincronizando
             </span>
@@ -201,7 +201,7 @@ export function BoardClient({
       </div>
 
       {/* Área de Conteúdo dos Boards */}
-      <div className="flex-1 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/40 backdrop-blur-md">
+      <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {view === "kanban" && (
           <KanbanBoard
             board={board} 

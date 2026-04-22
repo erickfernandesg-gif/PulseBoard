@@ -38,21 +38,21 @@ export default async function BoardPage({
   return (
     <div className="flex h-full flex-col animate-in fade-in duration-500">
       {/* Cabeçalho do Quadro Otimizado */}
-      <div className="mb-6 flex items-start justify-between bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800/60 backdrop-blur-sm">
+      <div className="mb-6 flex items-start justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 shadow-sm hidden sm:flex">
-            <LayoutTemplate className="h-6 w-6 text-indigo-400" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100 shadow-sm hidden sm:flex">
+            <LayoutTemplate className="h-6 w-6 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               {board.name}
             </h1>
             {board.description ? (
-              <p className="mt-1 text-sm text-zinc-400 max-w-2xl leading-relaxed">
+              <p className="mt-1 text-sm text-slate-500 max-w-2xl leading-relaxed">
                 {board.description}
               </p>
             ) : (
-              <p className="mt-1 text-xs text-zinc-500 uppercase tracking-widest font-bold">
+              <p className="mt-1 text-xs text-slate-400 uppercase tracking-widest font-bold">
                 Quadro de Operação Ativo
               </p>
             )}
@@ -61,8 +61,8 @@ export default async function BoardPage({
         
         {/* Espaço para futuras métricas rápidas do quadro (ex: total de tarefas) */}
         <div className="hidden md:flex flex-col items-end justify-center">
-          <span className="text-3xl font-bold text-white leading-none">{tasks?.length || 0}</span>
-          <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mt-1">Demandas Totais</span>
+          <span className="text-3xl font-bold text-slate-900 leading-none">{tasks?.length || 0}</span>
+          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Demandas Totais</span>
         </div>
       </div>
 

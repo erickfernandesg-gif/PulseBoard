@@ -76,7 +76,7 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             required
-            className="relative block w-full rounded-lg border-0 bg-zinc-800/50 py-2.5 px-3 text-white ring-1 ring-inset ring-zinc-700 placeholder:text-zinc-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+            className="relative block w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 px-4 text-slate-900 placeholder:text-slate-400 focus:z-10 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 sm:text-sm sm:leading-6 outline-none transition-all shadow-sm"
             placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -92,7 +92,7 @@ export function LoginForm() {
             type="password"
             autoComplete="current-password"
             required
-            className="relative block w-full rounded-lg border-0 bg-zinc-800/50 py-2.5 px-3 text-white ring-1 ring-inset ring-zinc-700 placeholder:text-zinc-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+            className="relative block w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 px-4 text-slate-900 placeholder:text-slate-400 focus:z-10 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 sm:text-sm sm:leading-6 outline-none transition-all shadow-sm"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -104,7 +104,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="group relative flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="group relative flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign in"}
         </button>
@@ -112,7 +112,7 @@ export function LoginForm() {
           type="button"
           onClick={handleSignUp}
           disabled={isLoading}
-          className="group relative flex w-full justify-center rounded-lg bg-zinc-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="group relative flex w-full justify-center rounded-lg bg-slate-100 px-3 py-2.5 text-sm font-bold text-slate-900 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           Sign up
         </button>

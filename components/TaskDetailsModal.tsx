@@ -426,46 +426,46 @@ const handleUpdateComment = async (commentId: string) => {
 
   return createPortal(
     <div className={cn(
-      "fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md transition-all",
+      "fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all",
       isFullscreen ? "p-0" : "p-2 md:p-6"
     )}>
       <div className="absolute inset-0" onClick={onClose} />
-      
+
       <div className={cn(
-        "relative bg-zinc-950 border border-zinc-800 shadow-[0_20px_70px_rgba(0,0,0,0.7)] flex flex-col animate-in fade-in zoom-in-95 duration-300 overflow-hidden transition-all translate-z-0",
+        "relative bg-white border border-slate-200 shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-300 overflow-hidden transition-all translate-z-0",
         isFullscreen ? "w-screen h-screen rounded-none border-none" : "w-full max-w-5xl h-[92vh] rounded-2xl"
       )}>
         
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-8 py-6 bg-zinc-900/40">
+        <div className="flex items-center justify-between border-b border-slate-200 px-8 py-6 bg-slate-50/80">
           <div className="flex-1">
             <input 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 w-full p-0 placeholder-zinc-700 outline-none"
+              className="text-xl font-bold text-slate-900 bg-transparent border-none focus:ring-0 w-full p-0 placeholder-slate-300 outline-none"
               placeholder="Título da demanda..."
             />
           </div>
           <div className="flex items-center gap-2 ml-4">
             <button 
               onClick={() => setIsFullscreen(!isFullscreen)} 
-              className="p-2 text-zinc-500 hover:text-indigo-400 transition-colors hidden md:block"
+              className="p-2 text-slate-400 hover:text-indigo-600 transition-colors hidden md:block"
               title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
             >
               {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
             </button>
-            <button onClick={onClose} className="p-2 text-zinc-500 hover:text-white transition-colors">
+            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
               <X size={20} />
             </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-zinc-900/50 border-b border-zinc-800 px-6">
+        <div className="flex bg-slate-50/50 border-b border-slate-200 px-6">
           <button
             onClick={() => setActiveTab("details")}
             className={`py-4 px-6 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-              activeTab === "details" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
+              activeTab === "details" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
             Configuração
@@ -473,50 +473,50 @@ const handleUpdateComment = async (commentId: string) => {
           <button
             onClick={() => setActiveTab("activity")}
             className={`py-4 px-6 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-              activeTab === "activity" ? "border-indigo-500 text-indigo-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
+              activeTab === "activity" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
             Chat de Operação ({comments.length})
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-zinc-950">
+        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-white text-slate-900">
           {activeTab === "details" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* COLUNA 1: ESCOPO E IDENTIFICAÇÃO */}
               <div className="space-y-6">
-                <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest border-b border-zinc-800 pb-3 flex items-center gap-2">
-                  <Building2 size={14} /> 1. Escopo e Identificação
+                <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest border-b border-slate-200 pb-3 flex items-center gap-2">
+                  <Building2 size={14} /> 1. Escopo & Identificação
                 </h3>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
                     <Building2 size={12} /> Cliente Vinculado
                   </label>
                   <select
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500 transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all focus:bg-white shadow-sm"
                   >
                     <option value="">Interno / Sem Cliente</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Descrição da Demanda</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Descrição da Demanda</label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 text-sm text-zinc-200 min-h-[180px] outline-none focus:border-indigo-500 transition-all leading-relaxed shadow-inner"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm text-slate-900 min-h-[180px] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all leading-relaxed focus:bg-white"
                     placeholder="Descreva o que deve ser feito..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase">Status do Workflow</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Status do Workflow</label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs text-indigo-400 font-bold outline-none focus:border-indigo-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs text-indigo-600 font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                     >
                       <option value="backlog">Caixa de Entrada</option>
                       <option value="todo">Backlog (A Fazer)</option>
@@ -527,7 +527,7 @@ const handleUpdateComment = async (commentId: string) => {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-2">
                       <CalendarDays size={12} /> Mês / Ciclo
                     </label>
                     <div className="flex gap-2">
@@ -535,12 +535,12 @@ const handleUpdateComment = async (commentId: string) => {
                         type="month"
                         value={targetMonth}
                         onChange={(e) => setTargetMonth(e.target.value)}
-                        className="flex-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg px-3 py-2.5 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
+                        className="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2.5 text-xs font-bold outline-none focus:border-emerald-500 transition-colors"
                       />
                       <button 
                         type="button"
                         onClick={handlePostponeMonth}
-                        className="px-3 bg-zinc-900 border border-zinc-800 rounded-lg text-emerald-500 hover:bg-zinc-800 transition-all shadow-sm"
+                      className="px-3 bg-slate-100 border border-slate-200 rounded-lg text-emerald-600 hover:bg-slate-200 transition-all shadow-sm"
                         title="Adiar para o próximo mês"
                       >
                         <ChevronRight size={16} />
@@ -548,140 +548,140 @@ const handleUpdateComment = async (commentId: string) => {
                     </div>
                   </div>
                 </div>
-                <div className={cn(
+              <div className={cn(
                   "p-5 rounded-xl border transition-all duration-300",
-                  isBlocked ? "bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.05)]" : "bg-zinc-900/20 border-zinc-800/50"
+                  isBlocked ? "bg-red-50 border-red-200 shadow-sm" : "bg-slate-50 border-slate-200/50"
                 )}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "p-2.5 rounded-lg transition-colors",
-                        isBlocked ? "bg-red-500/20 text-red-500" : "bg-zinc-800 text-zinc-500"
+                        isBlocked ? "bg-red-100 text-red-600" : "bg-slate-200 text-slate-500"
                       )}>
                         <AlertOctagon size={18} />
                       </div>
                       <div>
-                        <h4 className={cn("text-sm font-bold transition-colors", isBlocked ? "text-red-400" : "text-zinc-400")}>
+                        <h4 className={cn("text-sm font-bold transition-colors", isBlocked ? "text-red-700" : "text-slate-500")}>
                           {isBlocked ? "Impedimento Ativo" : "Sinalizar Bloqueio"}
                         </h4>
-                        <p className="text-[11px] text-zinc-500 mt-0.5">Alerta a equipe sobre travamentos</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Alerta a equipe sobre travamentos</p>
                       </div>
                     </div>
-                    <button type="button" onClick={() => setIsBlocked(!isBlocked)} className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out", isBlocked ? "bg-red-500" : "bg-zinc-700")}>
+                    <button type="button" onClick={() => setIsBlocked(!isBlocked)} className={cn("relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out", isBlocked ? "bg-red-600" : "bg-slate-300")}>
                       <span className={cn("pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out", isBlocked ? "translate-x-5" : "translate-x-0")} />
                     </button>
                   </div>
                   {isBlocked && (
                     <div className="mt-5 pt-5 border-t border-red-500/20 animate-in fade-in slide-in-from-top-2">
-                      <label className="text-[10px] font-bold text-red-400 uppercase mb-2 block">Motivo do Bloqueio</label>
-                      <textarea value={blockerReason} onChange={(e) => setBlockerReason(e.target.value)} placeholder="O que falta para avançar?" className="w-full bg-red-950/30 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-200 outline-none focus:border-red-500 placeholder-red-800/50 min-h-[80px] resize-none" />
+                      <label className="text-[10px] font-bold text-red-700 uppercase mb-2 block">Motivo do Bloqueio</label>
+                      <textarea value={blockerReason} onChange={(e) => setBlockerReason(e.target.value)} placeholder="O que falta para avançar?" className="w-full bg-white border border-red-200 rounded-lg px-4 py-3 text-sm text-red-900 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 placeholder-red-300 min-h-[80px] resize-none" />
                     </div>
                   )}
                 </div>
               </div>
               {/* COLUNA 2: EQUIPE E TEMPO */}
               <div className="space-y-6">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-3 flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-200 pb-3 flex items-center gap-2">
                   <Zap size={14} /> 2. Planejamento e Equipe
                 </h3>
-                <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/80">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
                   <label className="block text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                     <Clock size={12} /> Orçamento de Horas (Estimativa)
                   </label>
                   <div className="flex gap-2">
                     <div className="relative w-1/2">
-                      <input type="number" min="0" placeholder="0" value={estHours} onChange={(e) => setEstHours(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-3 pr-8 py-2.5 text-sm text-white outline-none focus:border-amber-500 transition-colors" />
-                      <span className="absolute right-3 top-2.5 text-sm text-zinc-600 font-bold">h</span>
+                      <input type="number" min="0" placeholder="0" value={estHours} onChange={(e) => setEstHours(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
+                      <span className="absolute right-3 top-2.5 text-sm text-slate-400 font-bold">h</span>
                     </div>
                     <div className="relative w-1/2">
-                      <input type="number" min="0" max="59" placeholder="0" value={estMinutes} onChange={(e) => setEstMinutes(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-3 pr-8 py-2.5 text-sm text-white outline-none focus:border-amber-500 transition-colors" />
-                      <span className="absolute right-3 top-2.5 text-sm text-zinc-600 font-bold">m</span>
+                      <input type="number" min="0" max="59" placeholder="0" value={estMinutes} onChange={(e) => setEstMinutes(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
+                      <span className="absolute right-3 top-2.5 text-sm text-slate-400 font-bold">m</span>
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Calendar size={12} /> Início Previsto</label>
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500" />
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Calendar size={12} /> Início Previsto</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Clock size={12} /> Prazo de Entrega</label>
-                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500" />
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Clock size={12} /> Prazo de Entrega</label>
+                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase">Responsável Principal</label>
-                  <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-indigo-500">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Responsável Principal</label>
+                  <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all">
                     <option value="">Não atribuído</option>
                     {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2"><UserPlus size={12} /> Colaboradores Extras</label>
-                  <div className="flex flex-wrap gap-2 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/80 min-h-[60px] items-start transition-all">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2"><UserPlus size={12} /> Colaboradores Extras</label>
+                  <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 min-h-[60px] items-start transition-all">
                     {profiles.map(p => (
-                      <button key={p.id} onClick={() => toggleCollaborator(p.id)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${collaborators.includes(p.id) ? "bg-indigo-500/20 border-indigo-500 text-indigo-400 shadow-sm" : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600"}`}>
+                      <button key={p.id} onClick={() => toggleCollaborator(p.id)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${collaborators.includes(p.id) ? "bg-indigo-50 border-indigo-200 text-indigo-600 shadow-sm" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}>
                         {p.full_name}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="space-y-4 pt-4 border-t border-zinc-800/50">
+                <div className="space-y-4 pt-4 border-t border-slate-200">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
                       <Clock size={12} /> Apontamento de Horas
                     </label>
                     {totalTimeSpent > 0 && (
-                      <span className="text-xs font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full">
+                      <span className="text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 px-3 py-1 rounded-full">
                         Total: {formatMinutes(totalTimeSpent)}
                       </span>
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-[10px] text-zinc-600 flex items-center mr-1"><Zap size={10} className="mr-1"/> Atalhos:</span>
-                    <button onClick={() => applyQuickTime(15)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">15m</button>
-                    <button onClick={() => applyQuickTime(30)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">30m</button>
-                    <button onClick={() => applyQuickTime(60)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">1h</button>
-                    <button onClick={() => applyQuickTime(120)} className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded hover:bg-zinc-800 transition-colors">2h</button>
+                    <span className="text-[10px] text-slate-500 flex items-center mr-1"><Zap size={10} className="mr-1"/> Atalhos:</span>
+                    <button onClick={() => applyQuickTime(15)} className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 transition-colors">15m</button>
+                    <button onClick={() => applyQuickTime(30)} className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 transition-colors">30m</button>
+                    <button onClick={() => applyQuickTime(60)} className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 transition-colors">1h</button>
+                    <button onClick={() => applyQuickTime(120)} className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded hover:bg-slate-100 transition-colors">2h</button>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex gap-1">
                       <div className="relative w-16">
                         <input
                           type="number" min="0" placeholder="0" value={inputHours} onChange={(e) => setInputHours(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2 pr-6 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                         />
-                        <span className="absolute right-2 top-2 text-xs text-zinc-600">h</span>
+                        <span className="absolute right-2 top-2 text-xs text-slate-400">h</span>
                       </div>
                       <div className="relative w-16">
                         <input
                           type="number" min="0" max="59" placeholder="0" value={inputMinutes} onChange={(e) => setInputMinutes(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-2 pr-6 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2 pr-6 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                         />
-                        <span className="absolute right-2 top-2 text-xs text-zinc-600">m</span>
+                        <span className="absolute right-2 top-2 text-xs text-slate-400">m</span>
                       </div>
                     </div>
                     <input
                       type="text" placeholder="O que foi feito?" value={timeDescription} onChange={(e) => setTimeDescription(e.target.value)}
-                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-indigo-500"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                     <button
                       onClick={handleAddTimeLog} disabled={isSubmittingTime || (!inputHours && !inputMinutes)}
-                      className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center"
+                      className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50 min-w-[80px] flex items-center justify-center"
                     >
                       {isSubmittingTime ? <Loader2 size={14} className="animate-spin" /> : "Registrar"}
                     </button>
                   </div>
                   <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2 mt-4">
                     {timeLogs.map((log) => (
-                      <div key={log.id} className="flex justify-between items-center bg-zinc-900/30 p-3 rounded-lg border border-zinc-800/50">
+                      <div key={log.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
                         <div>
-                          <span className="text-xs font-bold text-indigo-400">{log.profiles?.full_name}</span>
-                          <p className="text-[10px] text-zinc-500 mt-1">{log.description || "Tempo registrado"}</p>
+                          <span className="text-xs font-bold text-indigo-600">{log.profiles?.full_name}</span>
+                          <p className="text-[10px] text-slate-500 mt-1">{log.description || "Tempo registrado"}</p>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-bold text-white">{formatMinutes(log.minutes)}</span>
-                          <p className="text-[9px] text-zinc-600 mt-1">{format(new Date(log.log_date), "dd/MM/yy", { locale: ptBR })}</p>
+                          <span className="text-xs font-bold text-slate-900">{formatMinutes(log.minutes)}</span>
+                          <p className="text-[9px] text-slate-400 mt-1">{format(new Date(log.log_date), "dd/MM/yy", { locale: ptBR })}</p>
                         </div>
                       </div>
                     ))}
@@ -695,17 +695,17 @@ const handleUpdateComment = async (commentId: string) => {
               <div className="flex-1 space-y-4 pb-28">
                 {comments.length === 0 && (
                   <div className="text-center py-10">
-                    <MessageSquare size={40} className="mx-auto text-zinc-800 mb-2" />
-                    <p className="text-xs text-zinc-600 uppercase font-bold">Sem registros de atividade</p>
+                    <MessageSquare size={40} className="mx-auto text-slate-200 mb-2" />
+                    <p className="text-xs text-slate-400 uppercase font-bold">Sem registros de atividade</p>
                   </div>
                 )}
                 {/* As mensagens são renderizadas de baixo pra cima no array */}
                 {[...comments].reverse().map((c) => (
-                  <div key={c.id} className="group/comment bg-zinc-900/30 border border-zinc-800/50 p-4 rounded-xl space-y-2 relative transition-all hover:border-zinc-700/50">
+                  <div key={c.id} className="group/comment bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2 relative transition-all hover:border-indigo-200 shadow-sm">
                     <div className="flex justify-between items-start">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-indigo-400 uppercase">{c.profiles?.full_name}</span>
-                        <span className="text-[9px] text-zinc-600">{format(new Date(c.created_at), "HH:mm - dd/MM", { locale: ptBR })}</span>
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{c.profiles?.full_name}</span>
+                        <span className="text-[9px] text-slate-400">{format(new Date(c.created_at), "HH:mm - dd/MM", { locale: ptBR })}</span>
                       </div>
                       
                       {/* Botões de Ação (Apenas para o dono da mensagem) */}
@@ -716,14 +716,14 @@ const handleUpdateComment = async (commentId: string) => {
                               setEditingCommentId(c.id);
                               setEditedCommentContent(c.content);
                             }}
-                            className="p-1.5 text-zinc-600 hover:text-indigo-400 rounded-md hover:bg-indigo-500/5"
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-md hover:bg-indigo-50"
                             title="Editar mensagem"
                           >
                             <Edit2 size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteComment(c.id)}
-                            className="p-1.5 text-zinc-600 hover:text-red-400 transition-all rounded-md hover:bg-red-500/5"
+                            className="p-1.5 text-slate-400 hover:text-red-600 transition-all rounded-md hover:bg-red-50"
                             title="Excluir mensagem"
                           >
                             <Trash2 size={14} />
@@ -737,7 +737,7 @@ const handleUpdateComment = async (commentId: string) => {
                         <textarea
                           value={editedCommentContent}
                           onChange={(e) => setEditedCommentContent(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-500 resize-none"
+                          className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
                           rows={3}
                         />
                         <div className="flex justify-end gap-2 mt-2">
@@ -745,7 +745,7 @@ const handleUpdateComment = async (commentId: string) => {
                             type="button"
                             disabled={isSubmittingChat}
                             onClick={() => setEditingCommentId(null)}
-                            className="px-3 py-1.5 text-[10px] font-bold text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-50"
+                            className="px-3 py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-900 transition-colors disabled:opacity-50"
                           >
                             Cancelar
                           </button>
@@ -753,7 +753,7 @@ const handleUpdateComment = async (commentId: string) => {
                             type="button"
                             disabled={isSubmittingChat}
                             onClick={() => handleUpdateComment(c.id)}
-                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-[10px] font-bold transition-all disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[10px] font-bold transition-all disabled:opacity-50 flex items-center gap-2"
                           >
                             {isSubmittingChat && <Loader2 size={12} className="animate-spin" />}
                             {isSubmittingChat ? "Salvando..." : "Confirmar Alteração"}
@@ -761,7 +761,7 @@ const handleUpdateComment = async (commentId: string) => {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-zinc-300 leading-relaxed">{c.content}</p>
+                      <p className="text-sm text-slate-900 leading-relaxed">{c.content}</p>
                     )}
                   </div>
                 ))}
@@ -770,18 +770,18 @@ const handleUpdateComment = async (commentId: string) => {
               </div>
 
               {/* Input de Chat */}
-              <div className="sticky bottom-[-40px] left-0 right-0 bg-zinc-950 p-6 border-t border-zinc-800 -mx-10 z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+              <div className="sticky bottom-[-40px] left-0 right-0 bg-white p-6 border-t border-slate-200 -mx-10 z-20 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
                 <div className="relative max-w-5xl mx-auto">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Mencione alguém ou relate um erro de homologação..."
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-4 pr-12 py-3 text-sm text-white outline-none focus:border-indigo-500 resize-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white resize-none shadow-inner"
                     rows={2}
                   />
                   <button 
                     onClick={handleAddComment}
-                    className="absolute right-3 bottom-3 p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all"
+                    className="absolute right-3 bottom-3 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all shadow-md"
                   >
                     <Plus size={16} />
                   </button>
@@ -792,10 +792,10 @@ const handleUpdateComment = async (commentId: string) => {
         </div>
 
         {/* Rodapé de Ação */}
-        <div className="p-6 bg-zinc-900/30 border-t border-zinc-800 flex gap-4 z-10">
+        <div className="p-6 bg-slate-50/80 border-t border-slate-200 flex gap-4 z-10">
           <button 
             onClick={handleDelete}
-            className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all border border-red-500/20"
+            className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all border border-red-100"
             title="Excluir Tarefa"
           >
             <Trash2 size={20} />
@@ -803,7 +803,7 @@ const handleUpdateComment = async (commentId: string) => {
           <button 
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-[0_10px_20px_-10px_rgba(79,70,229,0.5)]"
+            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-100"
           >
             {isSaving ? <Loader2 size={20} className="animate-spin" /> : <><Save size={20} /> Sincronizar Operação</>}
           </button>

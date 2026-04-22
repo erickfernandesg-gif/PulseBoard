@@ -103,7 +103,7 @@ export function CreateBoardModal({
           "inline-flex items-center justify-center rounded-lg text-sm font-bold tracking-tight transition-all active:scale-95",
           variant === "solid"
             ? "bg-indigo-600 text-white hover:bg-indigo-500 h-10 px-4 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
-            : "border border-zinc-800 bg-transparent hover:bg-zinc-900 text-zinc-400 h-10 px-4",
+            : "border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 h-10 px-4 shadow-sm",
         )}
       >
         <Plus className="mr-2 h-4 w-4" />
@@ -112,19 +112,19 @@ export function CreateBoardModal({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl animate-in zoom-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm animate-in zoom-in duration-200">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-                  <Layout className="text-indigo-400" size={20} />
+                <div className="p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                  <Layout className="text-indigo-600" size={20} />
                 </div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
                   Novo Ecossistema
                 </h2>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-white transition-colors"
+                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -132,7 +132,7 @@ export function CreateBoardModal({
 
             <form onSubmit={handleCreate} className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                <label htmlFor="name" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Nome do Quadro
                 </label>
                 <input
@@ -141,14 +141,14 @@ export function CreateBoardModal({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border-0 bg-zinc-900 py-3 px-4 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-zinc-700"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-slate-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400"
                   placeholder="Ex: PulseBoard Core"
                 />
               </div>
 
               {/* Seletor de Templates Visual */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Tipo de Workflow
                 </label>
                 <div className="grid grid-cols-1 gap-3">
@@ -158,21 +158,21 @@ export function CreateBoardModal({
                       type="button"
                       onClick={() => setTemplate(key)}
                       className={cn(
-                        "flex items-center gap-4 p-4 rounded-xl border transition-all text-left",
+                        "flex items-center gap-4 p-4 rounded-xl border transition-all text-left shadow-sm",
                         template === key 
-                          ? "bg-indigo-500/10 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
-                          : "bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700"
+                          ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
+                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                       )}
                     >
                       <div className={cn(
                         "p-2 rounded-lg border",
-                        template === key ? "border-indigo-500/50 bg-indigo-500/20" : "border-zinc-700 bg-zinc-800"
+                        template === key ? "border-indigo-100 bg-white" : "border-slate-100 bg-slate-50"
                       )}>
                         {BOARD_TEMPLATES[key].icon}
                       </div>
                       <div>
                         <p className="text-sm font-bold">{BOARD_TEMPLATES[key].label}</p>
-                        <p className="text-[10px] opacity-60">
+                        <p className="text-[10px] text-slate-400">
                           {BOARD_TEMPLATES[key].columns.length} colunas configuradas
                         </p>
                       </div>
@@ -182,7 +182,7 @@ export function CreateBoardModal({
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="description" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                <label htmlFor="description" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Descrição (Opcional)
                 </label>
                 <textarea
@@ -190,16 +190,16 @@ export function CreateBoardModal({
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-xl border-0 bg-zinc-900 py-3 px-4 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-indigo-500 outline-none resize-none placeholder:text-zinc-700"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 px-4 text-slate-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none transition-all resize-none placeholder:text-slate-400"
                   placeholder="Qual o objetivo deste quadro?"
                 />
               </div>
 
-              <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-zinc-800/50">
+              <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="px-6 py-2.5 text-sm font-bold text-zinc-500 hover:text-white transition-colors"
+                  className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
                 >
                   Cancelar
                 </button>

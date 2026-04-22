@@ -42,58 +42,58 @@ export default async function DashboardHome() {
     .limit(5);
 
   return (
-    <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-8 animate-in fade-in duration-500">
+    <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-8 animate-in fade-in duration-500 text-slate-900">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard Operacional</h1>
-        <p className="text-zinc-400">Visão geral do ecossistema PulseBoard.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard Operacional</h1>
+        <p className="text-slate-500">Visão geral do ecossistema PulseBoard.</p>
       </div>
 
       {/* Cartões de Métricas Dinâmicos */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="rounded-lg bg-indigo-500/10 p-3">
-              <LayoutGrid className="h-6 w-6 text-indigo-400" />
+            <div className="rounded-lg bg-indigo-50 p-3 border border-indigo-100">
+              <LayoutGrid className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-zinc-400">Quadros Ativos</p>
-              <h3 className="text-2xl font-bold text-white">{boards?.length || 0}</h3>
+              <p className="text-sm font-medium text-slate-500">Quadros Ativos</p>
+              <h3 className="text-2xl font-bold text-slate-900">{boards?.length || 0}</h3>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="rounded-lg bg-amber-500/10 p-3">
-              <Clock className="h-6 w-6 text-amber-400" />
+            <div className="rounded-lg bg-amber-50 p-3 border border-amber-100">
+              <Clock className="h-6 w-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-zinc-400">Demandas Pendentes</p>
-              <h3 className="text-2xl font-bold text-white">{pendingTasks.length}</h3>
+              <p className="text-sm font-medium text-slate-500">Demandas Pendentes</p>
+              <h3 className="text-2xl font-bold text-slate-900">{pendingTasks.length}</h3>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-red-500/20 bg-zinc-900/50 p-6 shadow-sm">
+        <div className="rounded-xl border border-red-100 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="rounded-lg bg-red-500/10 p-3">
-              <AlertCircle className="h-6 w-6 text-red-400" />
+            <div className="rounded-lg bg-red-50 p-3 border border-red-100">
+              <AlertCircle className="h-6 w-6 text-red-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-red-400">Tarefas Atrasadas</p>
-              <h3 className="text-2xl font-bold text-red-400">{overdueTasks.length}</h3>
+              <p className="text-sm font-medium text-red-600 uppercase tracking-wider text-[10px] font-bold">Tarefas Atrasadas</p>
+              <h3 className="text-2xl font-bold text-red-700">{overdueTasks.length}</h3>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="rounded-lg bg-emerald-500/10 p-3">
-              <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+            <div className="rounded-lg bg-emerald-50 p-3 border border-emerald-100">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-zinc-400">Tarefas Concluídas</p>
-              <h3 className="text-2xl font-bold text-white">{completedTasks.length}</h3>
+              <p className="text-sm font-medium text-slate-500">Tarefas Concluídas</p>
+              <h3 className="text-2xl font-bold text-slate-900">{completedTasks.length}</h3>
             </div>
           </div>
         </div>
@@ -101,29 +101,29 @@ export default async function DashboardHome() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Quadros Recentes */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Os Seus Ecossistemas</h2>
-            <Link href="/boards" className="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+            <h2 className="text-lg font-bold text-slate-900">Os Seus Ecossistemas</h2>
+            <Link href="/boards" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
               Ver todos <ArrowRight size={14} />
             </Link>
           </div>
           
           <div className="grid gap-4 sm:grid-cols-2">
             {boards?.length === 0 ? (
-              <p className="text-sm text-zinc-500 col-span-2">Nenhum quadro criado ainda.</p>
+              <p className="text-sm text-slate-400 col-span-2 italic">Nenhum quadro criado ainda.</p>
             ) : (
               boards?.map((board) => (
                 <Link 
                   key={board.id} 
                   href={`/boards/${board.id}`}
-                  className="group flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 p-5 hover:border-indigo-500/50 hover:bg-zinc-900 transition-all"
+                  className="group flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50 p-5 hover:border-indigo-300 hover:bg-white hover:shadow-md transition-all"
                 >
                   <div>
-                    <h3 className="font-semibold text-white group-hover:text-indigo-400 transition-colors">{board.name}</h3>
-                    <p className="mt-1 text-xs text-zinc-500 line-clamp-2">{board.description || "Sem descrição"}</p>
+                    <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{board.name}</h3>
+                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">{board.description || "Sem descrição"}</p>
                   </div>
-                  <div className="mt-4 flex items-center justify-between text-xs text-zinc-600">
+                  <div className="mt-4 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-indigo-500 transition-colors">
                     <span>Aceder ao quadro</span>
                     <ArrowRight size={14} className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                   </div>
@@ -134,25 +134,25 @@ export default async function DashboardHome() {
         </div>
 
         {/* Atividade Recente (Chat/Comentários) */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg">
-          <h2 className="mb-6 text-lg font-semibold text-white">Radar de Comunicação</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-6 text-lg font-bold text-slate-900">Radar de Comunicação</h2>
           <div className="space-y-6">
             {recentComments?.length === 0 ? (
-              <p className="text-sm text-zinc-500">Nenhuma atividade recente registada.</p>
+              <p className="text-sm text-slate-400 italic">Nenhuma atividade recente registada.</p>
             ) : (
               recentComments?.map((comment: any) => (
-                <div key={comment.id} className="relative pl-6 before:absolute before:left-2 before:top-2 before:h-full before:w-[1px] before:bg-zinc-800 last:before:hidden">
-                  <div className="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-zinc-950 bg-indigo-500" />
-                  <p className="text-sm text-zinc-300">
-                    <span className="font-semibold text-indigo-400">{comment.profiles?.full_name}</span> comentou na tarefa{' '}
-                    <Link href={`/boards/${comment.tasks?.board_id}`} className="font-semibold text-white hover:underline">
+                <div key={comment.id} className="relative pl-6 before:absolute before:left-2 before:top-2 before:h-full before:w-[1px] before:bg-slate-100 last:before:hidden">
+                  <div className="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white bg-indigo-600 shadow-sm" />
+                  <p className="text-sm text-slate-600">
+                    <span className="font-bold text-indigo-600">{comment.profiles?.full_name}</span> comentou na tarefa{' '}
+                    <Link href={`/boards/${comment.tasks?.board_id}`} className="font-bold text-slate-900 hover:text-indigo-600 hover:underline transition-colors">
                       "{comment.tasks?.title}"
                     </Link>
                   </p>
-                  <p className="mt-1 text-sm text-zinc-400 italic bg-zinc-900/50 p-2 rounded border border-zinc-800/50">
+                  <p className="mt-1 text-sm text-slate-600 italic bg-slate-50 p-3 rounded-lg border border-slate-100 shadow-inner">
                     "{comment.content}"
                   </p>
-                  <p className="mt-2 text-xs text-zinc-600">
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     {format(new Date(comment.created_at), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}
                   </p>
                 </div>

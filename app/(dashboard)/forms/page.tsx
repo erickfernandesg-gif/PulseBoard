@@ -67,13 +67,13 @@ export default function FormsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="mx-auto max-w-7xl p-6 bg-slate-50/30">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Formulários de Solicitação
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Compartilhe estes links para receber demandas externas diretamente nos seus quadros.
           </p>
         </div>
@@ -92,25 +92,25 @@ export default function FormsPage() {
           {boards.map((board) => (
             <div 
               key={board.id} 
-              className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-6 flex flex-col justify-between hover:border-indigo-500/50 hover:bg-zinc-800/40 transition-all group"
+              className="rounded-xl border border-slate-200 bg-white p-6 flex flex-col justify-between hover:border-indigo-200 hover:shadow-md transition-all group"
             >
               <div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 mb-4 border border-indigo-500/20 group-hover:shadow-[0_0_15px_rgba(99,102,241,0.15)] transition-all">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 mb-4 border border-indigo-100 group-hover:shadow-sm transition-all">
                   <FileText size={24} />
                 </div>
-                <h3 className="text-lg font-semibold text-white truncate">
+                <h3 className="text-lg font-semibold text-slate-900 truncate">
                   Entrada: {board.name}
                 </h3>
-                <p className="text-sm text-zinc-400 mt-2 line-clamp-2">
+                <p className="text-sm text-slate-500 mt-2 line-clamp-2">
                   Qualquer solicitação enviada por este link cairá automaticamente na coluna "To Do" do quadro {board.name}.
                 </p>
               </div>
               
-              <div className="mt-6 flex items-center justify-between border-t border-zinc-800/80 pt-4">
+              <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                 <div className="flex gap-2 w-full">
                   <button 
                     onClick={() => handleCopyLink(board.id)}
-                    className="flex-1 flex justify-center items-center gap-1.5 rounded-md bg-zinc-800/80 px-2.5 py-2 text-xs font-medium text-zinc-300 hover:bg-indigo-500 hover:text-white transition-colors border border-zinc-700 hover:border-indigo-500"
+                    className="flex-1 flex justify-center items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-indigo-600 hover:text-white transition-colors border border-slate-200 hover:border-indigo-600 shadow-sm"
                   >
                     {copiedId === board.id ? (
                       <><Check size={14} /> Copiado!</>
@@ -120,7 +120,7 @@ export default function FormsPage() {
                   </button>
                   <button 
                     onClick={() => handlePreview(board.id)}
-                    className="flex-1 flex justify-center items-center gap-1.5 rounded-md bg-zinc-800/80 px-2.5 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors border border-zinc-700"
+                    className="flex-1 flex justify-center items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200"
                   >
                     <Eye size={14} />
                     Testar
@@ -131,7 +131,7 @@ export default function FormsPage() {
           ))}
 
           {boards.length === 0 && (
-            <div className="col-span-full p-8 text-center text-zinc-500 border border-dashed border-zinc-800 rounded-xl">
+            <div className="col-span-full p-8 text-center text-slate-400 border border-dashed border-slate-200 bg-white rounded-xl">
               Nenhum quadro encontrado. Crie um quadro primeiro para gerar seu formulário.
             </div>
           )}

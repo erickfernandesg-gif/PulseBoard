@@ -141,11 +141,11 @@ export default function AutomationsPage() {
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Bot className="text-indigo-500" />
             Construtor de Automações
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Reduza o trabalho braçal criando regras lógicas (SE / ENTÃO).
           </p>
         </div>
@@ -168,23 +168,23 @@ export default function AutomationsPage() {
           {automations.map((auto) => (
             <div 
               key={auto.id} 
-              className={`rounded-xl border bg-zinc-900/50 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all relative group ${
-                auto.is_active ? "border-zinc-700 hover:border-indigo-500/50" : "border-zinc-800 opacity-60 hover:opacity-100"
+              className={`rounded-xl border bg-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all relative group shadow-sm ${
+                auto.is_active ? "border-slate-200 hover:border-indigo-300" : "border-slate-100 opacity-60 hover:opacity-100"
               }`}
             >
               <div className="flex items-start sm:items-center gap-4">
-                <div className={`flex shrink-0 h-12 w-12 items-center justify-center rounded-lg ${auto.is_active ? "bg-indigo-500/10 text-indigo-400" : "bg-zinc-800 text-zinc-500"}`}>
+                <div className={`flex shrink-0 h-12 w-12 items-center justify-center rounded-lg ${auto.is_active ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-slate-50 text-slate-400"}`}>
                   <Zap size={24} />
                 </div>
                 <div>
-                  <h3 className={`text-lg font-semibold ${auto.is_active ? "text-white" : "text-zinc-400"}`}>
+                  <h3 className={`text-lg font-semibold ${auto.is_active ? "text-slate-900" : "text-slate-500"}`}>
                     {auto.title}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-zinc-400">
-                    <span className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] font-bold text-zinc-300 tracking-wider">SE</span>
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-slate-500">
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 tracking-wider border border-slate-200">SE</span>
                     <span className="text-xs">A tarefa for para <strong>{getTriggerLabel(auto.trigger_value)}</strong></span>
-                    <ArrowRight size={14} className="text-zinc-600 hidden sm:block mx-1" />
-                    <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400 tracking-wider">ENTÃO</span>
+                    <ArrowRight size={14} className="text-slate-300 hidden sm:block mx-1" />
+                    <span className="rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 tracking-wider border border-indigo-100">ENTÃO</span>
                     <span className="text-xs"><strong>{getActionLabel(auto.action_type)}</strong></span>
                   </div>
                 </div>
@@ -194,7 +194,7 @@ export default function AutomationsPage() {
                 {/* Botão Excluir (Aparece no Hover) */}
                 <button 
                   onClick={(e) => handleDelete(auto.id, e)}
-                  className="p-2 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Excluir Automação"
                 >
                   <Trash2 size={18} />
@@ -202,10 +202,10 @@ export default function AutomationsPage() {
 
                 {/* Switch / Toggle Button */}
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleAutomationStatus(auto.id, auto.is_active)}>
-                  <span className={`flex h-6 w-11 items-center rounded-full p-1 transition-colors ${auto.is_active ? "bg-indigo-600" : "bg-zinc-700"}`}>
+                  <span className={`flex h-6 w-11 items-center rounded-full p-1 transition-colors ${auto.is_active ? "bg-indigo-600" : "bg-slate-200"}`}>
                     <span className={`h-4 w-4 rounded-full bg-white transition-transform ${auto.is_active ? "translate-x-5" : "translate-x-0"}`}></span>
                   </span>
-                  <span className={`text-xs font-bold w-12 ${auto.is_active ? "text-indigo-400" : "text-zinc-500"}`}>
+                  <span className={`text-xs font-bold w-12 ${auto.is_active ? "text-indigo-600" : "text-slate-400"}`}>
                     {auto.is_active ? "ATIVO" : "INATIVO"}
                   </span>
                 </div>
@@ -214,10 +214,10 @@ export default function AutomationsPage() {
           ))}
 
           {automations.length === 0 && (
-            <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/20">
-              <Bot size={48} className="mx-auto text-zinc-700 mb-4" />
-              <h3 className="text-white font-bold mb-2">Nenhuma automação configurada</h3>
-              <p className="text-zinc-500 text-sm">Crie sua primeira regra para economizar tempo.</p>
+            <div className="text-center py-16 border border-dashed border-slate-200 rounded-xl bg-white shadow-sm">
+              <Bot size={48} className="mx-auto text-slate-200 mb-4" />
+              <h3 className="text-slate-900 font-bold mb-2">Nenhuma automação configurada</h3>
+              <p className="text-slate-500 text-sm">Crie sua primeira regra para economizar tempo.</p>
             </div>
           )}
         </div>
@@ -225,58 +225,58 @@ export default function AutomationsPage() {
 
       {/* MODAL DE CRIAÇÃO */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 <Zap className="text-indigo-500" size={20} /> Construir Lógica
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-white transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleCreateAutomation} className="space-y-6">
               <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Nome da Automação</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Nome da Automação</label>
                 <input 
                   type="text" 
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none transition-all placeholder:text-zinc-700" 
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-400" 
                   placeholder="Ex: Alerta de Conclusão"
                 />
               </div>
 
-              <div className="bg-zinc-900/50 p-5 rounded-xl border border-zinc-800/80 space-y-5">
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-5">
                 <div>
-                  <label className="block text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2">SE (Gatilho)</label>
+                  <label className="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-2">SE (Gatilho)</label>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-zinc-400">Status mudar para</span>
+                    <span className="text-xs text-slate-500">Status mudar para</span>
                     <select 
                       value={triggerValue}
                       onChange={(e) => setTriggerValue(e.target.value)}
-                      className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                      className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 outline-none shadow-sm"
                     >
                       <option value="todo">A Fazer</option>
                       <option value="in-progress">Em Execução</option>
                       <option value="homologation">Homologação</option>
                       <option value="done">Concluído</option>
-                      <option disabled className="text-zinc-600">--- Impedimentos ---</option>
+                      <option disabled className="text-slate-300">--- Impedimentos ---</option>
                       <option value="task_blocked">Tarefa for Bloqueada</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="h-px w-full bg-zinc-800/80"></div>
+                <div className="h-px w-full bg-slate-200"></div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2">ENTÃO (Ação)</label>
+                  <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">ENTÃO (Ação)</label>
                   <select 
                     value={actionType}
                     onChange={(e) => setActionType(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 outline-none shadow-sm"
                   >
                     <option value="notify_manager">Notificar Diretoria / Gestor</option>
                     <option value="assign_auto">Atribuir a um responsável automaticamente</option>
@@ -285,12 +285,12 @@ export default function AutomationsPage() {
 
                 {actionType === "assign_auto" && (
                   <div className="animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Selecionar Responsável</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Selecionar Responsável</label>
                     <select 
                       value={actionPayload}
                       onChange={(e) => setActionPayload(e.target.value)}
                       required
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 outline-none shadow-sm"
                     >
                       <option value="">Escolha um membro...</option>
                       {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
@@ -299,8 +299,8 @@ export default function AutomationsPage() {
                 )}
               </div>
 
-              <div className="mt-8 pt-6 border-t border-zinc-800 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-lg px-6 py-2.5 text-sm font-bold text-zinc-500 hover:text-white transition-all">
+              <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-lg px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-all">
                   Cancelar
                 </button>
                 <button type="submit" disabled={isSaving} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-8 py-2.5 text-sm font-bold text-white hover:bg-indigo-500 transition-all disabled:opacity-50">
